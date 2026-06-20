@@ -1,0 +1,291 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  CreateSessionInput,
+  HumanInputEventInput,
+  type SessionStatus,
+  type EventType,
+  type WorkItemStatus,
+} from "@taskforge/contracts";
+import {
+  canStartWorkItemSession,
+  isSessionActive,
+  isSessionTerminal,
+  nextEventSeq,
+  workItemStatusFromSessionResult,
+} from "@taskforge/domain";
+import { PrismaService } from "../common/prisma.service";
+import { AuditService } from "../audit/audit.service";
+
+@Injectable()
+export class SessionsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
+
+  async create(input: CreateSessionInput, actorId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const workItem = await tx.workItem.findUnique({
+        where: { id: input.workItemId },
+      });
+      if (!workItem) {
+        throw new NotFoundException("Work item not found");
+      }
+      if (
+        !canStartWorkItemSession(
+          workItem.status as WorkItemStatus,
+          workItem.activeSessionId,
+        )
+      ) {
+        throw new BadRequestException(
+          "Cannot start a session for this work item",
+        );
+      }
+
+      let bundle = await tx.contextBundle.findFirst({
+        where: { workItemId: workItem.id },
+        orderBy: { version: "desc" },
+      });
+      if (!bundle) {
+        bundle = await this.compileBundleInTx(tx, workItem);
+      }
+
+      const session = await tx.agentSession.create({
+        data: {
+          workItemId: workItem.id,
+          contextBundleId: bundle!.id,
+          mode: input.mode,
+          status: "created",
+          runnerId: input.runnerId ?? null,
+        },
+      });
+
+      await tx.sessionEvent.createMany({
+        data: [
+          {
+            sessionId: session.id,
+            seq: 1,
+            type: "session.created",
+            payload: {
+              instruction: input.instruction ?? null,
+              actorId,
+            },
+          },
+          {
+            sessionId: session.id,
+            seq: 2,
+            type: "context.compiled",
+            payload: { contextBundleId: bundle!.id },
+          },
+        ],
+      });
+
+      await tx.workItem.update({
+        where: { id: workItem.id },
+        data: { status: "in_progress", activeSessionId: session.id },
+      });
+
+      await tx.outboxEvent.create({
+        data: {
+          type: "prepare_acp_prompt",
+          payload: { sessionId: session.id },
+          status: "pending",
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "session.created",
+          actorId,
+          targetType: "session",
+          targetId: session.id,
+          payload: { workItemId: workItem.id, mode: input.mode },
+        },
+      });
+
+      return tx.agentSession.findUnique({
+        where: { id: session.id },
+        include: {
+          events: { orderBy: { seq: "asc" } },
+          workItem: true,
+          contextBundle: true,
+          runner: true,
+        },
+      });
+    });
+  }
+
+  async findOne(id: string) {
+    const session = await this.prisma.agentSession.findUnique({
+      where: { id },
+      include: {
+        events: { orderBy: { seq: "asc" } },
+        workItem: { include: { project: true } },
+        contextBundle: true,
+        runner: true,
+      },
+    });
+    if (!session) {
+      throw new NotFoundException("Session not found");
+    }
+    return session;
+  }
+
+  async findEvents(id: string, afterSeq?: number) {
+    return this.prisma.sessionEvent.findMany({
+      where: {
+        sessionId: id,
+        ...(afterSeq !== undefined ? { seq: { gt: afterSeq } } : {}),
+      },
+      orderBy: { seq: "asc" },
+    });
+  }
+
+  async appendHumanInput(
+    id: string,
+    input: HumanInputEventInput,
+    actorId: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const session = await tx.agentSession.findUnique({ where: { id } });
+      if (!session) {
+        throw new NotFoundException("Session not found");
+      }
+      const maxSeq = await tx.sessionEvent.aggregate({
+        where: { sessionId: id },
+        _max: { seq: true },
+      });
+      const seq = nextEventSeq(maxSeq._max.seq);
+      const event = await tx.sessionEvent.create({
+        data: {
+          sessionId: id,
+          seq,
+          type: "human.input",
+          payload: { body: input.body, actorId },
+        },
+      });
+      if (session.status === "awaiting_input") {
+        await tx.agentSession.update({
+          where: { id },
+          data: { status: "running" },
+        });
+      }
+      return event;
+    });
+  }
+
+  async stop(
+    id: string,
+    input: { reason?: string; finalStatus?: SessionStatus },
+    actorId: string,
+  ) {
+    const finalStatus = (input.finalStatus ?? "cancelled") as SessionStatus;
+    if (!isSessionTerminal(finalStatus)) {
+      throw new BadRequestException("finalStatus must be terminal");
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const session = await tx.agentSession.findUnique({
+        where: { id },
+        include: { workItem: true },
+      });
+      if (!session) {
+        throw new NotFoundException("Session not found");
+      }
+      if (!isSessionActive(session.status as SessionStatus)) {
+        throw new BadRequestException("Session is not active");
+      }
+
+      const maxSeq = await tx.sessionEvent.aggregate({
+        where: { sessionId: id },
+        _max: { seq: true },
+      });
+      const seq = nextEventSeq(maxSeq._max.seq);
+      const eventType = `session.${finalStatus}` as EventType;
+
+      await tx.sessionEvent.create({
+        data: {
+          sessionId: id,
+          seq,
+          type: eventType,
+          payload: { reason: input.reason ?? null, actorId },
+        },
+      });
+
+      await tx.agentSession.update({
+        where: { id },
+        data: { status: finalStatus, completedAt: new Date() },
+      });
+
+      const workItemStatus = workItemStatusFromSessionResult(finalStatus);
+      const workItemUpdate: { activeSessionId: null; status?: WorkItemStatus } =
+        { activeSessionId: null };
+      if (workItemStatus) {
+        workItemUpdate.status = workItemStatus;
+      }
+      if (session.workItem.activeSessionId === id) {
+        await tx.workItem.update({
+          where: { id: session.workItem.id },
+          data: workItemUpdate,
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          action: "session.stopped",
+          actorId,
+          targetType: "session",
+          targetId: id,
+          payload: { finalStatus, reason: input.reason },
+        },
+      });
+
+      return tx.agentSession.findUnique({
+        where: { id },
+        include: { events: { orderBy: { seq: "asc" } } },
+      });
+    });
+  }
+
+  private async compileBundleInTx(
+    tx: any,
+    workItem: {
+      id: string;
+      title: string;
+      description: string | null;
+      acceptanceCriteria: string | null;
+    },
+  ) {
+    const latestPrompt = await tx.promptVersion.findFirst({
+      where: { mode: "goal" },
+      orderBy: { version: "desc" },
+    });
+    const maxVersion = await tx.contextBundle.aggregate({
+      where: { workItemId: workItem.id },
+      _max: { version: true },
+    });
+    const nextVersion = (maxVersion._max.version ?? 0) + 1;
+    const promptInput = (latestPrompt?.template ?? "")
+      .replace(/{{title}}/g, workItem.title)
+      .replace(/{{description}}/g, workItem.description ?? "")
+      .replace(
+        /{{acceptanceCriteria}}/g,
+        workItem.acceptanceCriteria ?? "",
+      );
+
+    return tx.contextBundle.create({
+      data: {
+        workItemId: workItem.id,
+        version: nextVersion,
+        summary: workItem.title,
+        goal: workItem.description ?? "",
+        acceptanceCriteria: workItem.acceptanceCriteria ?? "",
+        promptInput,
+      },
+    });
+  }
+}

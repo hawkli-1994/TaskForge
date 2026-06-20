@@ -1,0 +1,16 @@
+{
+  "name": "@taskforge/repository-provider",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'no tests'"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

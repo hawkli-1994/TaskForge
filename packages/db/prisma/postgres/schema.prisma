@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  repositories   Repository[]
+  requirements   Requirement[]
+  roadmapItems   RoadmapItem[]
+  findings       Finding[]
+  workItems      WorkItem[]
+  runnerProfiles RunnerProfile[]
+}
+
+model Repository {
+  id           String  @id @default(cuid())
+  projectId    String
+  project      Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  provider     String
+  url          String
+  defaultBranch String?
+  externalId   String?
+  syncStatus   String  @default("pending")
+  lastSyncAt   DateTime?
+  syncError    String?
+
+  bindings RepositoryBinding[]
+  findings Finding[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RoadmapItem {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      String
+  targetDate  DateTime?
+  ownerId     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Requirement {
+  id                 String   @id @default(cuid())
+  projectId          String
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title              String
+  description        String?
+  status             String
+  priority           String
+  acceptanceCriteria String?
+  source             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Finding {
+  id          String      @id @default(cuid())
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  repositoryId String?
+  repository  Repository? @relation(fields: [repositoryId], references: [id], onDelete: SetNull)
+  title       String
+  description String?
+  type        String
+  severity    String
+  evidenceJson Json?
+  status      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkItem {
+  id                 String   @id @default(cuid())
+  projectId          String
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type               String
+  status             String
+  priority           String
+  assigneeId         String?
+  title              String
+  description        String?
+  acceptanceCriteria String?
+  reproductionSteps  String?
+
+  activeSessionId String?       @unique
+  activeSession   AgentSession? @relation(name: "WorkItemActiveSession", fields: [activeSessionId], references: [id])
+  sessions        AgentSession[]
+  contextBundles  ContextBundle[]
+  comments        WorkItemComment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContextBundle {
+  id                  String   @id @default(cuid())
+  workItemId          String
+  workItem            WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  version             Int
+  summary             String?
+  goal                String?
+  acceptanceCriteria  String?
+  sourceRefs          Json?
+  relatedFiles        Json?
+  history             String?
+  recommendedCommands Json?
+  promptInput         String?
+  tokenEstimate       Int?
+  staleAt             DateTime?
+
+  sessions AgentSession[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([workItemId, version])
+}
+
+model RunnerProfile {
+  id               String    @id @default(cuid())
+  ownerId          String
+  projectId        String?
+  project          Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  name             String
+  status           String
+  adapter          String?
+  version          String?
+  capabilities     Json?
+  lastHeartbeatAt  DateTime?
+
+  bindings RepositoryBinding[]
+  sessions AgentSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RepositoryBinding {
+  id           String        @id @default(cuid())
+  runnerId     String
+  runner       RunnerProfile @relation(fields: [runnerId], references: [id], onDelete: Cascade)
+  repositoryId String
+  repository   Repository    @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  localPath    String
+  remoteUrl    String
+  status       String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([runnerId, repositoryId])
+}
+
+model AgentSession {
+  id                 String    @id @default(cuid())
+  workItemId         String
+  workItem           WorkItem  @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  runnerId           String?
+  runner             RunnerProfile? @relation(fields: [runnerId], references: [id], onDelete: SetNull)
+  contextBundleId    String?
+  contextBundle      ContextBundle? @relation(fields: [contextBundleId], references: [id], onDelete: SetNull)
+  mode               String
+  status             String
+  acpSessionId       String?
+  acpAgentInfoJson   Json?
+  acpProtocolVersion String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+
+  activeForWorkItem WorkItem?      @relation(name: "WorkItemActiveSession")
+  events            SessionEvent[]
+  artifacts         Artifact[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SessionEvent {
+  id          String       @id @default(cuid())
+  sessionId   String
+  session     AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  seq         Int
+  type        String
+  payload     Json
+  rawAcpJson  Json?
+  createdAt   DateTime     @default(now())
+
+  @@unique([sessionId, seq])
+}
+
+model Artifact {
+  id               String       @id @default(cuid())
+  sessionId        String
+  session          AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type             String
+  storageUrl       String
+  sha256           String?
+  sizeBytes        Int?
+  redactionStatus  String       @default("pending")
+  metadata         Json?
+
+  createdAt DateTime @default(now())
+}
+
+model PromptVersion {
+  id        String   @id @default(cuid())
+  mode      String
+  version   Int
+  template  String
+  checksum  String
+  createdAt DateTime @default(now())
+
+  @@unique([mode, version])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String
+  payload    Json?
+  createdAt  DateTime @default(now())
+}
+
+model OutboxEvent {
+  id           String   @id @default(cuid())
+  type         String
+  payload      Json
+  status       String   @default("pending")
+  retryCount   Int      @default(0)
+  availableAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+}
+
+model WorkItemComment {
+  id         String   @id @default(cuid())
+  workItemId String
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  authorId   String?
+  body       String
+  kind       String   @default("comment")
+
+  createdAt DateTime @default(now())
+}

@@ -2,31 +2,88 @@
 
 ## Project Structure & Module Organization
 
-This repository is currently documentation-first. The canonical product definition lives in `docs/v0.1_prd.md`; update it when changing TaskForge v0.1 scope, object models, state machines, or acceptance criteria. Keep repository-level guidance in `AGENTS.md`. If implementation starts, place product docs under `docs/` and create explicit source roots such as `apps/`, `packages/`, or `runner/` with their own README files and scripts.
+This repository is the implementation of TaskForge v0.1. The canonical product definition lives in `docs/v0.1_prd.md`; update it when changing TaskForge v0.1 scope, object models, state machines, or acceptance criteria. Keep repository-level guidance in `AGENTS.md`.
+
+Source roots:
+
+- `apps/web/` – Next.js UI
+- `apps/api/` – NestJS REST API and Runner control plane
+- `apps/worker/` – BullMQ background workers
+- `packages/db/` – Prisma schema (SQLite dev, PostgreSQL prod) and seed
+- `packages/contracts/` – Zod DTOs shared by API, Web, and Runner SDK
+- `packages/domain/` – Pure state machines, permissions, and validation helpers
+- `packages/repository-provider/` – Provider port abstraction for GitHub/GitLab
+- `crates/runner/` – Rust Local Runner CLI
+- `crates/runner-core/` – ACP host, platform client, spool, and redaction logic
+
+Each app/package should keep its own README if it introduces non-trivial setup or scripts.
 
 ## Build, Test, and Development Commands
 
-No build or test toolchain is defined yet. Use documentation inspection commands while the repo remains docs-only:
+Install dependencies once:
 
-- `sed -n '1,120p' docs/v0.1_prd.md` reads the PRD overview.
-- `rg "Local Runner|ExecutionEnvelope|AgentSession" docs/` checks core terminology.
-- `wc -w docs/v0.1_prd.md` gives a rough size check before major rewrites.
+```bash
+pnpm install
+```
 
-When adding code, include the exact setup, dev, build, lint, and test commands in the new module README and wire them into package or workspace scripts.
+Start local infrastructure (optional; SQLite is used for default dev):
+
+```bash
+docker compose up -d
+```
+
+Generate the Prisma client and prepare the dev SQLite database:
+
+```bash
+export DATABASE_URL="file:./packages/db/dev.db"
+pnpm db:generate
+pnpm db:migrate:dev
+pnpm db:seed
+```
+
+Run the whole stack in development:
+
+```bash
+pnpm dev
+```
+
+- Web UI: http://localhost:3000
+- API: http://localhost:3001/api
+
+Other workspace commands:
+
+```bash
+pnpm lint              # tsc --noEmit across packages
+pnpm typecheck         # same as lint
+pnpm test              # unit tests
+pnpm test:integration  # API integration tests (SQLite + Redis)
+pnpm db:validate       # validate both SQLite and PostgreSQL Prisma schemas
+pnpm cargo:test        # Rust tests
+pnpm cargo:fmt         # Rust format check
+pnpm cargo:clippy      # Rust clippy
+```
 
 ## Coding Style & Naming Conventions
 
 Markdown files should use concise headings, short paragraphs, and fenced code blocks for commands or examples. Keep existing product terms stable: `WorkItem`, `ContextBundle`, `ExecutionEnvelope`, `AgentSession`, `SessionEvent`, and `Local Runner`. Documentation filenames should follow the existing versioned pattern, for example `docs/v0.1_prd.md` or `docs/v0.2_architecture.md`.
 
-For future code, prefer descriptive names that match the PRD object model. Do not introduce stack-specific conventions until the implementation stack is chosen and documented.
+TypeScript packages should use strict mode. Prefer descriptive names that match the PRD object model. NestJS controllers use kebab-case paths. Rust crates use `snake_case` modules and error types with `thiserror`.
 
 ## Testing Guidelines
 
-There are no automated tests yet. For documentation changes, verify links, headings, terminology, and consistency with the v0.1 scope. For future implementation, add tests beside the module they cover and document the test runner command. Core behavior should cover session state transitions, append-only event ordering, Runner preflight rejection, artifact redaction, and WorkItem status rules.
+Add tests beside the module they cover and document the test runner command. Core behavior must cover:
+
+- WorkItem and AgentSession state transitions.
+- Append-only SessionEvent ordering and seq validation.
+- Runner preflight rejection and deny-path rules.
+- Artifact redaction before upload.
+- Session start transaction concurrency (no two active sessions on one WorkItem).
+
+Run tests with `pnpm test`, `pnpm test:integration`, and `cargo test --workspace`.
 
 ## Commit & Pull Request Guidelines
 
-This directory is not currently a Git repository, so no local commit history conventions are available. Once Git is initialized, use short imperative commit subjects such as `docs: clarify runner constraints` or `feat: add session event model`. Pull requests should include a brief purpose statement, changed files or sections, linked issue if applicable, and screenshots only when UI artifacts are introduced.
+Use short imperative commit subjects such as `docs: clarify runner constraints` or `feat: add session event model`. Pull requests should include a brief purpose statement, changed files or sections, linked issue if applicable, and screenshots only when UI artifacts are introduced.
 
 ## Architecture & Security Notes
 

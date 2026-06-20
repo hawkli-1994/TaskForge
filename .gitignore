@@ -1,15 +1,41 @@
-.DS_Store
-.env
-.env.*
-!.env.example
+# dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# build outputs
+.next/
+out/
 dist/
 build/
-target/
-.turbo/
-.next/
-.cache/
-coverage/
-*.log
+*.tsbuildinfo
+
+# local env files
+.env
+.env.*.local
+
+# database
 *.sqlite
-*.sqlite3
+*.sqlite-journal
+packages/db/dev.db
+packages/db/test.db
+prisma/dev.db
+
+# rust
+target/
+Cargo.lock
+
+# logs
+*.log
+logs/
+
+# misc
+.DS_Store
+.vscode/
+.idea/
+.turbo/
+
+# docker
+postgres_data/
+redis_data/
+minio_data/

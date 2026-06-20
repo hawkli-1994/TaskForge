@@ -1,0 +1,24 @@
+{
+  "name": "@taskforge/worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/main.ts",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'no tests'"
+  },
+  "dependencies": {
+    "bullmq": "^5.56.0",
+    "ioredis": "^5.6.0",
+    "@taskforge/db": "workspace:*",
+    "@taskforge/contracts": "workspace:*",
+    "@taskforge/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.3"
+  }
+}
