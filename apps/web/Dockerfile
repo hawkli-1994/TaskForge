@@ -1,6 +1,7 @@
 FROM node:24-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+RUN apk add --no-cache libc6-compat openssl python3 make g++
 RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
 
 FROM base AS builder
