@@ -28,14 +28,60 @@ docs/
 - Rust >= 1.89
 - Docker + Docker Compose (for Postgres, Redis, MinIO in production-like mode)
 
-## Quick start
+## Quick start (Docker Compose one-click)
+
+The fastest way to run the whole stack is with the pre-built images from GitHub Container Registry:
+
+```bash
+# 1. Clone or pull the latest code
+git clone https://github.com/hawkli-1994/TaskForge.git
+cd TaskForge
+
+# 2. (Optional) configure environment; see .env.example
+cp .env.example .env
+# edit .env if you want to enable GitLab integration
+
+# 3. Start everything
+docker compose up -d
+```
+
+Services:
+
+- Web UI: http://localhost:3000
+- API: http://localhost:3001/api
+- PostgreSQL: localhost:5432
+- Redis: localhost:6379
+- MinIO: http://localhost:9000 (console: http://localhost:9001)
+
+Docker Compose will automatically:
+
+1. Start Postgres, Redis and MinIO.
+2. Run Prisma Postgres migrations in the API container.
+3. Start API, Web and Worker containers.
+
+To pull the latest images instead of building locally:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+To stop:
+
+```bash
+docker compose down
+```
+
+## Local development
+
+If you prefer to run from source:
 
 ```bash
 # 1. Install dependencies
 pnpm install
 
 # 2. Start local infrastructure (optional for dev; SQLite is used by default)
-docker compose up -d
+docker compose up -d postgres redis minio
 
 # 3. Generate Prisma client and migrate the dev SQLite database
 export DATABASE_URL="file:./packages/db/dev.db"
