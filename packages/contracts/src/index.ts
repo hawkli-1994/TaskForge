@@ -110,10 +110,18 @@ export const UpdateWorkItemStatusInput = z.object({
 });
 export type UpdateWorkItemStatusInput = z.infer<typeof UpdateWorkItemStatusInput>;
 
+export const RunnerAgentInput = z.object({
+  name: z.string().min(1).max(100),
+  adapter: z.string().max(100).optional(),
+  status: z.enum(["online", "offline"]).optional(),
+});
+export type RunnerAgentInput = z.infer<typeof RunnerAgentInput>;
+
 export const CreateSessionInput = z.object({
   workItemId: z.string().cuid2(),
   mode: Mode,
   runnerId: z.string().cuid2().optional(),
+  agentName: z.string().max(100).optional(),
   instruction: z.string().max(5000).optional(),
 });
 export type CreateSessionInput = z.infer<typeof CreateSessionInput>;
@@ -128,6 +136,7 @@ export const RunnerRegisterInput = z.object({
   projectId: z.string().cuid2().optional(),
   adapter: z.string().max(100).optional(),
   capabilities: z.record(z.unknown()).optional(),
+  agents: z.array(RunnerAgentInput).optional(),
 });
 export type RunnerRegisterInput = z.infer<typeof RunnerRegisterInput>;
 
@@ -143,6 +152,7 @@ export const RunnerHeartbeatInput = z.object({
       }),
     )
     .optional(),
+  agents: z.array(RunnerAgentInput).optional(),
 });
 export type RunnerHeartbeatInput = z.infer<typeof RunnerHeartbeatInput>;
 

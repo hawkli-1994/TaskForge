@@ -134,7 +134,7 @@ export default async function WorkItemPage({
       </div>
 
       <aside>
-        <StartSessionForm workItemId={workItem.id} />
+        <StartSessionForm projectId={params.id} workItemId={workItem.id} />
       </aside>
     </div>
   );

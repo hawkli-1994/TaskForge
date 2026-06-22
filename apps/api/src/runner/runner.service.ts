@@ -63,12 +63,21 @@ export class RunnerService {
         status: "online",
         capabilities: (input.capabilities ?? {}) as any,
         lastHeartbeatAt: new Date(),
+        agents: {
+          create: (input.agents ?? []).map((a) => ({
+            name: a.name,
+            adapter: a.adapter ?? null,
+            status: a.status ?? "online",
+            lastHeartbeatAt: new Date(),
+          })),
+        },
       },
+      include: { agents: true },
     });
     await this.audit.log("runner.registered", actorId, "runner", runner.id, {
       name: input.name,
     });
-    return { runner_id: runner.id, token };
+    return { runner_id: runner.id, token, agents: runner.agents };
   }
 
   async heartbeat(runnerId: string, input: RunnerHeartbeatInput) {
@@ -116,7 +125,36 @@ export class RunnerService {
       }
     }
 
+    if (input.agents) {
+      for (const agent of input.agents) {
+        await this.prisma.runnerAgent.upsert({
+          where: { runnerId_name: { runnerId, name: agent.name } },
+          create: {
+            runnerId,
+            name: agent.name,
+            adapter: agent.adapter ?? null,
+            status: agent.status ?? "online",
+            lastHeartbeatAt: new Date(),
+          },
+          update: {
+            adapter: agent.adapter ?? undefined,
+            status: agent.status ?? undefined,
+            lastHeartbeatAt: new Date(),
+          },
+        });
+      }
+    }
+
     return { ok: true };
+  }
+
+  async listForProject(projectId: string, actorId: string) {
+    await this.projects.requireAccess(actorId, projectId, "viewer");
+    return this.prisma.runnerProfile.findMany({
+      where: { projectId },
+      include: { agents: { orderBy: { name: "asc" } } },
+      orderBy: { lastHeartbeatAt: "desc" },
+    });
   }
 
   async claim(runnerId: string) {
@@ -163,12 +201,14 @@ export class RunnerService {
         },
       });
 
+      const agentInfo = (session.acpAgentInfoJson ?? {}) as Record<string, string | null>;
       const acp = {
         sessionId: session.id,
         workItemId: session.workItemId,
         projectId: session.workItem.projectId,
         repositoryId: session.workItem.repositoryId ?? null,
         mode: session.mode,
+        agentName: agentInfo.agentName ?? null,
         content: `ACP prompt for ${session.mode}: ${
           session.contextBundle?.promptInput ??
           session.workItem.description ??

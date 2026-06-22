@@ -66,6 +66,21 @@ export interface ProjectBoard {
   items: WorkItem[];
 }
 
+export interface RunnerAgent {
+  id: string;
+  name: string;
+  adapter?: string | null;
+  status: string;
+}
+
+export interface Runner {
+  id: string;
+  name: string;
+  status: string;
+  agents: RunnerAgent[];
+  lastHeartbeatAt?: string | null;
+}
+
 export interface Session {
   id: string;
   workItemId: string;
@@ -73,6 +88,10 @@ export interface Session {
   mode: Mode;
   runnerId?: string;
   runnerName?: string;
+  acpAgentInfoJson?: {
+    agentName?: string | null;
+    runnerName?: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

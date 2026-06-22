@@ -2,7 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
-  ForbiddenException,
+  Get,
   Headers,
   HttpCode,
   HttpStatus,
@@ -31,6 +31,11 @@ export class RunnerController {
     @ReqUser() user: RequestUser,
   ) {
     return this.runner.register(input, user.id);
+  }
+
+  @Get("projects/:projectId")
+  findRunners(@Param("projectId") projectId: string, @ReqUser() user: RequestUser) {
+    return this.runner.listForProject(projectId, user.id);
   }
 
   @Post("heartbeat")

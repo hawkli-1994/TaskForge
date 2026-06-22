@@ -44,6 +44,28 @@ export class SessionsService {
       "contributor",
     );
 
+    let resolvedRunner: { id: string; name: string; projectId: string | null; agents: { name: string }[] } | null = null;
+    if (input.runnerId) {
+      resolvedRunner = await this.prisma.runnerProfile.findUnique({
+        where: { id: input.runnerId },
+        include: { agents: { select: { name: true } } },
+      });
+      if (!resolvedRunner) {
+        throw new NotFoundException("Runner not found");
+      }
+      if (resolvedRunner.projectId && resolvedRunner.projectId !== workItem.projectId) {
+        throw new BadRequestException("Runner does not belong to this project");
+      }
+      if (input.agentName) {
+        const found = resolvedRunner.agents.some((a) => a.name === input.agentName);
+        if (!found) {
+          throw new BadRequestException(
+            `Agent ${input.agentName} is not available on this runner`,
+          );
+        }
+      }
+    }
+
     let outboxEventId: string | undefined;
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -72,6 +94,14 @@ export class SessionsService {
         bundle = await this.compileBundleInTx(tx, workItemInTx);
       }
 
+      const acpAgentInfoJson = resolvedRunner
+        ? {
+            runnerId: resolvedRunner.id,
+            runnerName: resolvedRunner.name,
+            agentName: input.agentName ?? null,
+          }
+        : null;
+
       const session = await tx.agentSession.create({
         data: {
           workItemId: workItemInTx.id,
@@ -79,6 +109,7 @@ export class SessionsService {
           mode: input.mode,
           status: "created",
           runnerId: input.runnerId ?? null,
+          acpAgentInfoJson: acpAgentInfoJson as any,
         },
       });
 

@@ -214,9 +214,26 @@ model RunnerProfile {
 
   bindings RepositoryBinding[]
   sessions AgentSession[]
+  agents   RunnerAgent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model RunnerAgent {
+  id              String        @id @default(cuid())
+  runnerId        String
+  runner          RunnerProfile @relation(fields: [runnerId], references: [id], onDelete: Cascade)
+  name            String
+  adapter         String?
+  status          String        @default("online")
+  lastHeartbeatAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([runnerId, name])
+  @@index([runnerId])
 }
 
 model RepositoryBinding {
