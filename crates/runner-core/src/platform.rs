@@ -34,6 +34,7 @@ pub struct ClaimedSession {
     pub mode: String,
     #[serde(rename = "content")]
     pub prompt: String,
+    pub working_directory: Option<String>,
     #[serde(default)]
     pub artifact_upload_url: String,
     #[serde(default = "default_next_seq")]

@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import { Session, SessionEvent } from "@/lib/types";
 import { SessionEventStream } from "@/components/session-event-stream";
+import { SessionResume } from "@/components/session-resume";
 
 export default async function SessionPage({
   params,
@@ -36,7 +37,7 @@ export default async function SessionPage({
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Session</h1>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-md bg-white p-3 shadow-sm border border-gray-200">
             <div className="text-xs uppercase tracking-wide text-gray-500">
               Status
@@ -64,8 +65,18 @@ export default async function SessionPage({
               ) : null}
             </div>
           </div>
+          <div className="rounded-md bg-white p-3 shadow-sm border border-gray-200">
+            <div className="text-xs uppercase tracking-wide text-gray-500">
+              Working directory
+            </div>
+            <div className="mt-1 break-all font-mono text-sm text-gray-900">
+              {session.workingDirectory ?? "Default"}
+            </div>
+          </div>
         </div>
       </div>
+
+      <SessionResume session={session} events={events} />
 
       <SessionEventStream sessionId={session.id} initialEvents={events} />
     </div>

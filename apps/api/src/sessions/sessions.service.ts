@@ -7,6 +7,8 @@ import {
 import {
   CreateSessionInput,
   HumanInputEventInput,
+  ResumeSessionInput,
+  UpdateSessionWorkingDirectoryInput,
   type SessionStatus,
   type EventType,
   type WorkItemStatus,
@@ -139,6 +141,7 @@ export class SessionsService {
           mode: input.mode,
           status: "created",
           runnerId: input.runnerId ?? null,
+          workingDirectory: input.workingDirectory ?? null,
           acpAgentInfoJson: acpAgentInfoJson as any,
         },
       });
@@ -297,6 +300,119 @@ export class SessionsService {
         });
       }
       return event;
+    });
+  }
+
+  async resume(id: string, input: ResumeSessionInput, actorId: string) {
+    const session = await this.prisma.agentSession.findUnique({
+      where: { id },
+      include: { workItem: true },
+    });
+    if (!session) {
+      throw new NotFoundException("Session not found");
+    }
+    await this.projects.requireAccess(
+      actorId,
+      session.workItem.projectId,
+      "contributor",
+    );
+
+    const resumable: SessionStatus[] = [
+      "failed",
+      "interrupted",
+      "awaiting_input",
+    ];
+    if (!resumable.includes(session.status as SessionStatus)) {
+      throw new BadRequestException(
+        `Cannot resume session in status ${session.status}`,
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const sessionInTx = await tx.agentSession.findUnique({ where: { id } });
+      if (!sessionInTx) {
+        throw new NotFoundException("Session not found");
+      }
+      const maxSeq = await tx.sessionEvent.aggregate({
+        where: { sessionId: id },
+        _max: { seq: true },
+      });
+      const seq = nextEventSeq(maxSeq._max.seq);
+
+      await tx.sessionEvent.create({
+        data: {
+          sessionId: id,
+          seq,
+          type: "runner.dispatched",
+          payload: { reason: "resume", actorId },
+        },
+      });
+
+      const updateData: {
+        status: SessionStatus;
+        runnerId: null;
+        workingDirectory?: string;
+      } = {
+        status: "dispatching",
+        runnerId: null,
+      };
+      if (input.workingDirectory) {
+        updateData.workingDirectory = input.workingDirectory;
+      }
+
+      await tx.agentSession.update({
+        where: { id },
+        data: updateData,
+      });
+
+      await tx.workItem.update({
+        where: { id: session.workItem.id },
+        data: { status: "in_progress", activeSessionId: session.id },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "session.resumed",
+          actorId,
+          targetType: "session",
+          targetId: id,
+          payload: { workingDirectory: input.workingDirectory ?? null },
+        },
+      });
+
+      return tx.agentSession.findUnique({
+        where: { id },
+        include: {
+          events: { orderBy: { seq: "asc" } },
+          workItem: true,
+          contextBundle: true,
+          runner: true,
+        },
+      });
+    });
+  }
+
+  async updateWorkingDirectory(
+    id: string,
+    input: UpdateSessionWorkingDirectoryInput,
+    actorId: string,
+  ) {
+    const session = await this.prisma.agentSession.findUnique({
+      where: { id },
+      include: { workItem: true },
+    });
+    if (!session) {
+      throw new NotFoundException("Session not found");
+    }
+    await this.projects.requireAccess(
+      actorId,
+      session.workItem.projectId,
+      "contributor",
+    );
+
+    return this.prisma.agentSession.update({
+      where: { id },
+      data: { workingDirectory: input.workingDirectory },
     });
   }
 

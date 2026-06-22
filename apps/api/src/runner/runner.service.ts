@@ -38,6 +38,7 @@ const EVENT_TO_SESSION_STATUS: Partial<Record<EventType, SessionStatus>> = {
   "session.awaiting_input": "awaiting_input",
   "approval.requested": "awaiting_approval",
   "verification.started": "verifying",
+  "runner.working_directory_missing": "failed",
   "session.completed": "completed",
   "session.failed": "failed",
   "session.cancelled": "cancelled",
@@ -329,6 +330,7 @@ export class RunnerService {
         repositoryId: session.workItem.repositoryId ?? null,
         mode: session.mode,
         agentName: agentInfo.agentName ?? null,
+        workingDirectory: session.workingDirectory ?? null,
         content: `ACP prompt for ${session.mode}: ${
           session.contextBundle?.promptInput ??
           session.workItem.description ??

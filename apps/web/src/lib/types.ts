@@ -98,6 +98,7 @@ export interface Session {
   workItemId: string;
   status: SessionStatus;
   mode: Mode;
+  workingDirectory?: string | null;
   runnerId?: string;
   runnerName?: string;
   acpAgentInfoJson?: {

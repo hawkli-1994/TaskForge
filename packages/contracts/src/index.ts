@@ -78,6 +78,7 @@ export const EventType = z.enum([
   "session.awaiting_input",
   "approval.requested",
   "human.input",
+  "runner.working_directory_missing",
   "session.completed",
   "session.failed",
   "session.cancelled",
@@ -123,8 +124,21 @@ export const CreateSessionInput = z.object({
   runnerId: z.string().cuid2().optional(),
   agentName: z.string().max(100).optional(),
   instruction: z.string().max(5000).optional(),
+  workingDirectory: z.string().max(2000).optional(),
 });
 export type CreateSessionInput = z.infer<typeof CreateSessionInput>;
+
+export const ResumeSessionInput = z.object({
+  workingDirectory: z.string().max(2000).optional(),
+});
+export type ResumeSessionInput = z.infer<typeof ResumeSessionInput>;
+
+export const UpdateSessionWorkingDirectoryInput = z.object({
+  workingDirectory: z.string().min(1).max(2000),
+});
+export type UpdateSessionWorkingDirectoryInput = z.infer<
+  typeof UpdateSessionWorkingDirectoryInput
+>;
 
 export const HumanInputEventInput = z.object({
   body: z.string().min(1).max(5000),

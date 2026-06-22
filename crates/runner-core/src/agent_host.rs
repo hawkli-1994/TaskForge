@@ -56,16 +56,20 @@ impl AgentHost for StubAgentHost {
     ) -> Result<(), RunnerError> {
         info!("stub agent starting session {}", session.session_id);
 
+        let cwd = session
+            .working_directory
+            .clone()
+            .unwrap_or_else(|| "/workspace".to_string());
         let events = vec![
             (
                 1u64,
                 "session.started",
-                json!({ "session_id": session.session_id, "mode": session.mode }),
+                json!({ "session_id": session.session_id, "mode": session.mode, "cwd": cwd }),
             ),
             (
                 2u64,
                 "command.started",
-                json!({ "command": "analyze prompt", "cwd": "/workspace" }),
+                json!({ "command": "analyze prompt", "cwd": cwd }),
             ),
             (
                 3u64,

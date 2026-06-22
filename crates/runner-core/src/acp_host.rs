@@ -379,18 +379,31 @@ async fn run_acp_session_inner(
     }
 
     // session/new
-    let cwd = host
-        .local_path_for_repo(session.repository_id.as_ref())
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
-        .to_string_lossy()
-        .to_string();
+    let cwd = resolve_working_directory(session, host);
+    if !cwd.exists() {
+        client
+            .emitter
+            .send(
+                "runner.working_directory_missing",
+                serde_json::json!({
+                    "session_id": session.session_id,
+                    "path": cwd.to_string_lossy().to_string(),
+                }),
+            )
+            .await?;
+        return Err(RunnerError::AgentHost(format!(
+            "working directory does not exist: {}",
+            cwd.to_string_lossy()
+        )));
+    }
+    let cwd_str = cwd.to_string_lossy().to_string();
 
     client
         .send_request(
             2,
             "session/new",
             serde_json::json!({
-                "cwd": cwd,
+                "cwd": cwd_str,
                 "mcpServers": [],
             }),
         )
@@ -407,7 +420,7 @@ async fn run_acp_session_inner(
                 "session_id": session.session_id,
                 "mode": session.mode,
                 "acp_session_id": new_result.session_id,
-                "cwd": cwd,
+                "cwd": cwd_str,
             }),
         )
         .await?;
@@ -571,6 +584,19 @@ fn map_update_type(update_type: &str) -> &'static str {
         "available_commands_update" => "acp.available_commands",
         _ => "acp.update",
     }
+}
+
+fn resolve_working_directory(
+    session: &ClaimedSession,
+    host: &AcpAgentHost,
+) -> PathBuf {
+    if let Some(dir) = session.working_directory.as_ref() {
+        return PathBuf::from(dir);
+    }
+    if let Some(path) = host.local_path_for_repo(session.repository_id.as_ref()) {
+        return path;
+    }
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
 async fn emit_failure(emitter: &mut EventEmitter<'_>, reason: &str) -> Result<(), RunnerError> {

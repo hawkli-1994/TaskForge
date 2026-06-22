@@ -283,6 +283,7 @@ model AgentSession {
   contextBundle      ContextBundle? @relation(fields: [contextBundleId], references: [id], onDelete: SetNull)
   mode               String
   status             String
+  workingDirectory   String?
   acpSessionId       String?
   acpAgentInfoJson   Json?
   acpProtocolVersion String?

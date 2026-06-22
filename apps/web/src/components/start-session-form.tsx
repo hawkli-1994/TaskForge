@@ -16,6 +16,7 @@ interface LastSelection {
   runnerId: string;
   runnerName: string;
   agentName: string;
+  workingDirectory?: string;
   sessionId?: string;
 }
 
@@ -33,6 +34,7 @@ export function StartSessionForm({
   const [runnersError, setRunnersError] = useState<string | null>(null);
   const [runnerId, setRunnerId] = useState("");
   const [agentName, setAgentName] = useState("");
+  const [workingDirectory, setWorkingDirectory] = useState("");
   const [instruction, setInstruction] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +70,9 @@ export function StartSessionForm({
     if (!last) return;
     setRunnerId(last.runnerId);
     setAgentName(last.agentName);
+    if (last.workingDirectory) {
+      setWorkingDirectory(last.workingDirectory);
+    }
     setMode("goal");
   }
 
@@ -81,12 +86,15 @@ export function StartSessionForm({
         mode: Mode;
         runnerId?: string;
         agentName?: string;
+        workingDirectory?: string;
         instruction?: string;
       } = { workItemId, mode };
       const trimmedRunner = runnerId.trim();
       if (trimmedRunner) body.runnerId = trimmedRunner;
       const trimmedAgent = agentName.trim();
       if (trimmedAgent) body.agentName = trimmedAgent;
+      const trimmedWorkingDirectory = workingDirectory.trim();
+      if (trimmedWorkingDirectory) body.workingDirectory = trimmedWorkingDirectory;
       const trimmedInstruction = instruction.trim();
       if (trimmedInstruction) body.instruction = trimmedInstruction;
 
@@ -105,6 +113,7 @@ export function StartSessionForm({
             runnerId,
             runnerName: runner?.name ?? "",
             agentName,
+            workingDirectory: trimmedWorkingDirectory,
             sessionId: session.id,
           }),
         );
@@ -213,6 +222,23 @@ export function StartSessionForm({
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label htmlFor="session-working-directory" className="block text-sm font-medium text-gray-700">
+            Working directory
+          </label>
+          <input
+            id="session-working-directory"
+            type="text"
+            value={workingDirectory}
+            onChange={(e) => setWorkingDirectory(e.target.value)}
+            placeholder="/path/on/runner/node where the agent should run"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Absolute path on the runner host. If left empty, the runner uses the repository binding or its current directory.
+          </p>
         </div>
 
         <div>

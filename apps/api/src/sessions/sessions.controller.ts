@@ -13,6 +13,8 @@ import { Response } from "express";
 import {
   CreateSessionInput,
   HumanInputEventInput,
+  ResumeSessionInput,
+  UpdateSessionWorkingDirectoryInput,
   type SessionStatus,
 } from "@taskforge/contracts";
 import { ZodBody } from "../common/zod.pipe";
@@ -85,6 +87,27 @@ export class SessionsController {
     @ReqUser() user: RequestUser,
   ) {
     return this.sessions.appendHumanInput(id, input, user.id);
+  }
+
+  @Post(":id/resume")
+  @HttpCode(HttpStatus.OK)
+  resume(
+    @Param("id") id: string,
+    @ZodBody(ResumeSessionInput) input: ResumeSessionInput,
+    @ReqUser() user: RequestUser,
+  ) {
+    return this.sessions.resume(id, input, user.id);
+  }
+
+  @Post(":id/working-directory")
+  @HttpCode(HttpStatus.OK)
+  updateWorkingDirectory(
+    @Param("id") id: string,
+    @ZodBody(UpdateSessionWorkingDirectoryInput)
+    input: UpdateSessionWorkingDirectoryInput,
+    @ReqUser() user: RequestUser,
+  ) {
+    return this.sessions.updateWorkingDirectory(id, input, user.id);
   }
 
   @Post(":id/stop")
