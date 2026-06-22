@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import { Project } from "@/lib/types";
+import { Project, Repository } from "@/lib/types";
 import { RepositoryConnectForm } from "@/components/repository-connect-form";
 import { RunnerSettings } from "@/components/runner-settings";
 import Link from "next/link";
@@ -12,12 +12,29 @@ async function getProject(id: string): Promise<Project | null> {
   }
 }
 
+async function getRepositories(id: string): Promise<Repository[]> {
+  try {
+    return await apiFetch<Repository[]>(`/api/projects/${id}/repositories`);
+  } catch {
+    return [];
+  }
+}
+
+function providerLabel(repo: Repository) {
+  const parts = repo.url.replace(/\.git$/, "").split("/");
+  const name = parts[parts.length - 1] ?? repo.url;
+  return `${repo.provider}/${name}`;
+}
+
 export default async function SettingsPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const project = await getProject(params.id);
+  const [project, repositories] = await Promise.all([
+    getProject(params.id),
+    getRepositories(params.id),
+  ]);
   if (!project) {
     return (
       <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
@@ -49,6 +66,25 @@ export default async function SettingsPage({
           A project can be bound to multiple code repositories. Tokens are stored
           encrypted at rest and used to fetch metadata and open pull requests.
         </p>
+        {repositories.length > 0 ? (
+          <ul className="mb-4 divide-y divide-gray-100 rounded-md border border-gray-200">
+            {repositories.map((repo) => (
+              <li key={repo.id} className="flex items-center justify-between px-4 py-2">
+                <a
+                  href={repo.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                >
+                  {providerLabel(repo)}
+                </a>
+                <span className="text-xs text-gray-500">
+                  {repo.defaultBranch ?? "unknown branch"} · {repo.syncStatus}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <RepositoryConnectForm projectId={params.id} />
       </section>
 
