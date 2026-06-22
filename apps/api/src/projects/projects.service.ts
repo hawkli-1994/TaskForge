@@ -110,6 +110,13 @@ export class ProjectsService {
     filters: { status?: string; assignee?: string },
   ) {
     await this.requireAccess(actorId, id, "viewer");
+    const project = await this.prisma.project.findUnique({
+      where: { id },
+      select: { id: true, name: true, description: true },
+    });
+    if (!project) {
+      throw new NotFoundException("Project not found");
+    }
     const items = await this.prisma.workItem.findMany({
       where: {
         projectId: id,
@@ -119,14 +126,7 @@ export class ProjectsService {
       orderBy: { updatedAt: "desc" },
     });
 
-    const grouped: Record<string, typeof items> = {};
-    for (const status of WORK_ITEM_STATUSES) {
-      grouped[status] = [];
-    }
-    for (const item of items) {
-      grouped[item.status] = (grouped[item.status] ?? []).concat(item);
-    }
-    return grouped;
+    return { project, items };
   }
 
   async findMembers(id: string, actorId: string) {
