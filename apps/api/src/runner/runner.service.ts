@@ -64,13 +64,15 @@ export class RunnerService {
     return this.createRunnerProfile(input, actorId, input.projectId ?? null);
   }
 
-  async createRegistrationToken(actorId: string, projectId: string) {
-    await this.projects.requireAccess(actorId, projectId, "maintainer");
+  async createRegistrationToken(actorId: string, projectId?: string) {
+    if (projectId) {
+      await this.projects.requireAccess(actorId, projectId, "maintainer");
+    }
     const token = crypto.randomBytes(32).toString("hex");
     await this.redis.getClient().setex(
       `${this.REG_TOKEN_PREFIX}${token}`,
       this.REG_TOKEN_TTL_SECONDS,
-      JSON.stringify({ userId: actorId, projectId }),
+      JSON.stringify({ userId: actorId, projectId: projectId ?? null }),
     );
     return { token };
   }

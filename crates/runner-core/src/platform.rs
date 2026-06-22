@@ -183,10 +183,12 @@ impl PlatformClient {
             adapter: adapter.to_string(),
         };
         debug!("POST {}", url);
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert("content-type", "application/json".parse().unwrap());
         let resp = self
             .client
             .post(&url)
-            .headers(self.runner_headers(None)?)
+            .headers(headers)
             .json(&body)
             .send()
             .await?;

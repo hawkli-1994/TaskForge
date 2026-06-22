@@ -11,6 +11,7 @@ interface RunnerToken {
 export function RunnerSettings({ projectId }: { projectId: string }) {
   const [runners, setRunners] = useState<Runner[]>([]);
   const [name, setName] = useState("");
+  const [projectScoped, setProjectScoped] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +35,10 @@ export function RunnerSettings({ projectId }: { projectId: string }) {
     setError(null);
     setToken(null);
     try {
+      const body = projectScoped ? { projectId } : {};
       const result = await apiFetch<RunnerToken>("/api/runner/tokens", {
         method: "POST",
-        body: JSON.stringify({ projectId }),
+        body: JSON.stringify(body),
       });
       setToken(result.token);
     } catch (err) {
@@ -104,6 +106,15 @@ export function RunnerSettings({ projectId }: { projectId: string }) {
           Like Tailscale, generate a one-time token and paste the command in your terminal.
           The runner will auto-register, discover agents in your PATH, and start.
         </p>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={projectScoped}
+            onChange={(e) => setProjectScoped(e.target.checked)}
+            className="rounded border-gray-300"
+          />
+          Bind to this project only (otherwise visible in all your projects)
+        </label>
         <div className="flex gap-3">
           <input
             type="text"
