@@ -3,12 +3,14 @@ import { apiFetch } from "@/lib/api";
 import {
   ProjectBoard,
   Repository,
+  Runner,
   WorkItem,
   WorkItemStatus,
 } from "@/lib/types";
 import { WorkItemCard } from "@/components/work-item-card";
 import { CreateWorkItemForm } from "@/components/create-work-item-form";
 import { RepositoryList } from "@/components/repository-list";
+import { RunnerStatusPanel } from "@/components/runner-status-panel";
 
 const columns: WorkItemStatus[] = [
   "backlog",
@@ -30,14 +32,16 @@ export default async function BoardPage({
 }) {
   let board: ProjectBoard | null = null;
   let repositories: Repository[] = [];
+  let runners: Runner[] = [];
   let error: string | null = null;
 
   try {
-    [board, repositories] = await Promise.all([
+    [board, repositories, runners] = await Promise.all([
       apiFetch<ProjectBoard>(`/api/projects/${params.id}/board`),
       apiFetch<Repository[]>(`/api/projects/${params.id}/repositories`).catch(
         () => [],
       ),
+      apiFetch<Runner[]>(`/api/runner/projects/${params.id}`).catch(() => []),
     ]);
   } catch (e) {
     error = e instanceof Error ? e.message : "Failed to load board";
@@ -82,6 +86,9 @@ export default async function BoardPage({
           ) : null}
           <div className="mt-2">
             <RepositoryList projectId={params.id} initialRepos={repositories} />
+          </div>
+          <div className="mt-2">
+            <RunnerStatusPanel runners={runners} />
           </div>
         </div>
         <Link
