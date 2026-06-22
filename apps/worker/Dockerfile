@@ -45,5 +45,10 @@ COPY --from=builder /app/packages/domain/dist ./packages/domain/dist
 COPY --from=builder /app/packages/pi-agent/package.json ./packages/pi-agent/package.json
 COPY --from=builder /app/packages/pi-agent/dist ./packages/pi-agent/dist
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/worker/node_modules ./apps/worker/node_modules
+COPY --from=builder /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=builder /app/packages/contracts/node_modules ./packages/contracts/node_modules
+COPY --from=builder /app/packages/domain/node_modules ./packages/domain/node_modules
+COPY --from=builder /app/packages/pi-agent/node_modules ./packages/pi-agent/node_modules
 
 CMD ["node", "apps/worker/dist/main.js"]

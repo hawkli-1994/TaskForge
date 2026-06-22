@@ -34,6 +34,9 @@ COPY --from=builder /app/apps/web/package.json /app/apps/web/next.config.js /app
 COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder /app/apps/web/.next ./.next
 COPY --from=builder /app/apps/web/node_modules ./node_modules
+COPY --from=builder /app/packages/contracts/package.json /app/packages/contracts/package.json
+COPY --from=builder /app/packages/contracts/dist /app/packages/contracts/dist
+COPY --from=builder /app/packages/contracts/node_modules /app/packages/contracts/node_modules
 COPY --from=builder /app/node_modules /app/node_modules
 
-CMD ["../../node_modules/.bin/next", "start"]
+CMD ["./node_modules/.bin/next", "start"]

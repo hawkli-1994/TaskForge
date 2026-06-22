@@ -41,6 +41,7 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/packages/db/package.json ./packages/db/package.json
 COPY --from=builder /app/packages/db/dist ./packages/db/dist
 COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
+COPY --from=builder /app/packages/db/src/seed.ts ./packages/db/src/seed.ts
 COPY --from=builder /app/packages/contracts/package.json ./packages/contracts/package.json
 COPY --from=builder /app/packages/contracts/dist ./packages/contracts/dist
 COPY --from=builder /app/packages/domain/package.json ./packages/domain/package.json
@@ -50,5 +51,11 @@ COPY --from=builder /app/packages/repository-provider/dist ./packages/repository
 COPY --from=builder /app/packages/pi-agent/package.json ./packages/pi-agent/package.json
 COPY --from=builder /app/packages/pi-agent/dist ./packages/pi-agent/dist
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=builder /app/packages/contracts/node_modules ./packages/contracts/node_modules
+COPY --from=builder /app/packages/domain/node_modules ./packages/domain/node_modules
+COPY --from=builder /app/packages/repository-provider/node_modules ./packages/repository-provider/node_modules
+COPY --from=builder /app/packages/pi-agent/node_modules ./packages/pi-agent/node_modules
 
-CMD ["sh", "-c", "pnpm --filter @taskforge/db migrate:deploy:postgres && node apps/api/dist/main.js"]
+CMD ["sh", "-c", "pnpm --filter @taskforge/db migrate:deploy:postgres && DATABASE_URL=$DATABASE_URL pnpm --filter @taskforge/db exec tsx src/seed.ts && node apps/api/dist/main.js"]
