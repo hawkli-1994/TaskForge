@@ -53,10 +53,15 @@ export default async function SessionPage({
           </div>
           <div className="rounded-md bg-white p-3 shadow-sm border border-gray-200">
             <div className="text-xs uppercase tracking-wide text-gray-500">
-              Runner
+              Runner / Agent
             </div>
             <div className="mt-1 font-medium text-gray-900">
               {session.runnerName ?? session.runnerId ?? "Unassigned"}
+              {session.acpAgentInfoJson?.agentName ? (
+                <span className="ml-2 text-sm text-gray-600">
+                  / {session.acpAgentInfoJson.agentName}
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
