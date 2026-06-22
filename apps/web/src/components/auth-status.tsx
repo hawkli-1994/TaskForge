@@ -19,17 +19,19 @@ function initials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function AuthStatus() {
+export function AuthStatus({ initialUser }: { initialUser?: User | null }) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null | undefined>(initialUser);
 
   useEffect(() => {
-    apiFetch<User>("/api/users/me")
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
-  }, []);
+    // If the server could not provide a user (e.g. static generation), refresh
+    // client-side.
+    if (user === undefined) {
+      apiFetch<User>("/api/users/me")
+        .then(setUser)
+        .catch(() => setUser(null));
+    }
+  }, [user]);
 
   async function logout() {
     await apiFetch("/api/auth/logout", { method: "POST" });
@@ -38,10 +40,8 @@ export function AuthStatus() {
     router.refresh();
   }
 
-  if (loading) {
-    return (
-      <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200" />
-    );
+  if (user === undefined) {
+    return <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200" />;
   }
 
   if (!user) {
