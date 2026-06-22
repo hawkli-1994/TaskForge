@@ -2,6 +2,31 @@ import { apiFetch } from "@/lib/api";
 import { Session, SessionEvent } from "@/lib/types";
 import { SessionEventStream } from "@/components/session-event-stream";
 import { SessionResume } from "@/components/session-resume";
+import { Status, StatusIndicator, StatusLabel } from "@/components/ui/status";
+
+function sessionStatus(
+  status: Session["status"],
+): "online" | "offline" | "maintenance" | "degraded" {
+  switch (status) {
+    case "running":
+    case "completed":
+    case "verifying":
+      return "online";
+    case "created":
+    case "context_compiling":
+    case "queued":
+    case "dispatching":
+    case "awaiting_input":
+    case "awaiting_approval":
+      return "maintenance";
+    case "failed":
+    case "cancelled":
+    case "interrupted":
+      return "offline";
+    default:
+      return "degraded";
+  }
+}
 
 export default async function SessionPage({
   params,
@@ -42,8 +67,13 @@ export default async function SessionPage({
             <div className="text-xs uppercase tracking-wide text-gray-500">
               Status
             </div>
-            <div className="mt-1 font-medium text-gray-900">
-              {session.status.replace(/_/g, " ")}
+            <div className="mt-1">
+              <Status status={sessionStatus(session.status)} className="text-xs">
+                <StatusIndicator />
+                <StatusLabel>
+                  {session.status.replace(/_/g, " ")}
+                </StatusLabel>
+              </Status>
             </div>
           </div>
           <div className="rounded-md bg-white p-3 shadow-sm border border-gray-200">

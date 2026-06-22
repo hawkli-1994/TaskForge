@@ -1,14 +1,24 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mode } from "@taskforge/contracts";
 import { apiFetch } from "@/lib/api";
 import { Runner } from "@/lib/types";
+import { Status, StatusIndicator } from "@/components/ui/status";
 
 const modes: Mode[] = ["goal", "plan", "investigate"];
 
 const STORAGE_KEY = "taskforge:last-session-selection";
+
+function runnerStatus(
+  runner: Runner,
+): "online" | "offline" | "maintenance" | "degraded" {
+  if (runner.status === "online") return "online";
+  if (runner.status === "busy") return "online";
+  if (runner.status === "error") return "degraded";
+  return "offline";
+}
 
 interface LastSelection {
   projectId: string;
@@ -33,7 +43,9 @@ export function StartSessionForm({
   const [runnersLoading, setRunnersLoading] = useState(true);
   const [runnersError, setRunnersError] = useState<string | null>(null);
   const [runnerId, setRunnerId] = useState("");
+  const [runnerOpen, setRunnerOpen] = useState(false);
   const [agentName, setAgentName] = useState("");
+  const runnerDropdownRef = useRef<HTMLDivElement>(null);
   const [workingDirectory, setWorkingDirectory] = useState("");
   const [instruction, setInstruction] = useState("");
   const [busy, setBusy] = useState(false);
@@ -62,6 +74,21 @@ export function StartSessionForm({
       // ignore corrupt storage
     }
   }, [projectId]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        runnerDropdownRef.current &&
+        !runnerDropdownRef.current.contains(e.target as Node)
+      ) {
+        setRunnerOpen(false);
+      }
+    }
+    if (runnerOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [runnerOpen]);
 
   const selectedRunner = runners.find((r) => r.id === runnerId);
   const agents = selectedRunner?.agents ?? [];
@@ -170,8 +197,8 @@ export function StartSessionForm({
           </select>
         </div>
 
-        <div>
-          <label htmlFor="session-runner" className="block text-sm font-medium text-gray-700">
+        <div className="relative" ref={runnerDropdownRef}>
+          <label className="block text-sm font-medium text-gray-700">
             Runner instance
           </label>
           {runnersLoading ? (
@@ -179,22 +206,56 @@ export function StartSessionForm({
           ) : runnersError ? (
             <div className="mt-1 text-sm text-red-600">{runnersError}</div>
           ) : (
-            <select
-              id="session-runner"
-              value={runnerId}
-              onChange={(e) => {
-                setRunnerId(e.target.value);
-                setAgentName("");
-              }}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            >
-              <option value="">Select a runner</option>
-              {runners.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name} ({r.status})
-                </option>
-              ))}
-            </select>
+            <>
+              <button
+                type="button"
+                onClick={() => setRunnerOpen((v) => !v)}
+                className="mt-1 flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                {selectedRunner ? (
+                  <span className="flex items-center gap-2">
+                    <Status status={runnerStatus(selectedRunner)} className="text-xs">
+                      <StatusIndicator />
+                    </Status>
+                    {selectedRunner.name}
+                  </span>
+                ) : (
+                  <span className="text-gray-500">Select a runner</span>
+                )}
+                <span className="text-gray-400">▼</span>
+              </button>
+              {runnerOpen ? (
+                <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+                  {runners.map((r) => (
+                    <li key={r.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRunnerId(r.id);
+                          setAgentName("");
+                          setRunnerOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                          r.id === runnerId ? "bg-indigo-50" : ""
+                        }`}
+                      >
+                        <Status status={runnerStatus(r)} className="text-xs">
+                          <StatusIndicator />
+                        </Status>
+                        <span className="font-medium">{r.name}</span>
+                        <span className="text-xs text-gray-500">
+                          {r.agents.length > 0
+                            ? `${r.agents.length} agent${
+                                r.agents.length === 1 ? "" : "s"
+                              }`
+                            : "no agents"}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </>
           )}
         </div>
 

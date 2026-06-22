@@ -1,4 +1,5 @@
 import { Runner } from "@/lib/types";
+import { Status, StatusIndicator } from "@/components/ui/status";
 
 const HEARTBEAT_STALE_MS = 5 * 60 * 1000;
 
@@ -10,13 +11,19 @@ function isRunnerRecent(runner: Runner): boolean {
   );
 }
 
-export function RunnerStatusPanel({ runners }: { runners: Runner[] }) {
-  const onlineRunners = runners.filter(
-    (r) =>
-      isRunnerRecent(r) && (r.status === "online" || r.status === "busy"),
-  );
+function runnerStatus(
+  runner: Runner,
+): "online" | "offline" | "maintenance" | "degraded" {
+  if (!isRunnerRecent(runner)) return "offline";
+  if (runner.status === "online" || runner.status === "busy") return "online";
+  if (runner.status === "error") return "degraded";
+  return "offline";
+}
 
-  if (onlineRunners.length === 0) {
+export function RunnerStatusPanel({ runners }: { runners: Runner[] }) {
+  const recentRunners = runners.filter((r) => isRunnerRecent(r));
+
+  if (recentRunners.length === 0) {
     return (
       <div className="text-xs text-gray-500">
         No local runners online for this project.
@@ -26,19 +33,16 @@ export function RunnerStatusPanel({ runners }: { runners: Runner[] }) {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      {onlineRunners.map((runner) => {
+      {recentRunners.map((runner) => {
         const agentNames = runner.agents.map((a) => a.name).join(", ");
         return (
-          <div
+          <Status
             key={runner.id}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs"
+            status={runnerStatus(runner)}
+            className="text-xs"
             title={agentNames ? `agents: ${agentNames}` : undefined}
           >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                runner.status === "online" ? "bg-green-500" : "bg-yellow-500"
-              }`}
-            />
+            <StatusIndicator />
             <span className="font-medium text-gray-900">{runner.name}</span>
             {runner.agents.length > 0 ? (
               <span className="text-gray-500">
@@ -46,7 +50,7 @@ export function RunnerStatusPanel({ runners }: { runners: Runner[] }) {
                 {runner.agents.length === 1 ? "" : "s"})
               </span>
             ) : null}
-          </div>
+          </Status>
         );
       })}
     </div>

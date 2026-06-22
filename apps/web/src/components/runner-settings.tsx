@@ -3,9 +3,19 @@
 import { FormEvent, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { Runner } from "@/lib/types";
+import { Status, StatusIndicator } from "@/components/ui/status";
 
 interface RunnerToken {
   token: string;
+}
+
+function runnerStatus(
+  runner: Runner,
+): "online" | "offline" | "maintenance" | "degraded" {
+  if (runner.status === "online") return "online";
+  if (runner.status === "busy") return "online";
+  if (runner.status === "error") return "degraded";
+  return "offline";
 }
 
 export function RunnerSettings({ projectId }: { projectId: string }) {
@@ -69,17 +79,10 @@ export function RunnerSettings({ projectId }: { projectId: string }) {
                     <p className="text-sm font-medium text-gray-900">{runner.name}</p>
                     <p className="text-xs text-gray-500">{runner.id}</p>
                   </div>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      runner.status === "online"
-                        ? "bg-green-100 text-green-700"
-                        : runner.status === "busy"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {runner.status}
-                  </span>
+                  <Status status={runnerStatus(runner)} className="text-xs">
+                    <StatusIndicator />
+                    <span className="capitalize">{runner.status}</span>
+                  </Status>
                 </div>
                 {runner.agents.length > 0 ? (
                   <div className="mt-2 flex flex-wrap gap-2">
