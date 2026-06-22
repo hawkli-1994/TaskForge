@@ -158,7 +158,19 @@ export class RunnerService {
         ownerId: actorId,
         OR: [{ projectId: null }, { projectId }],
       },
-      include: {
+      select: {
+        id: true,
+        ownerId: true,
+        projectId: true,
+        name: true,
+        status: true,
+        scope: true,
+        adapter: true,
+        version: true,
+        capabilities: true,
+        lastHeartbeatAt: true,
+        createdAt: true,
+        updatedAt: true,
         agents: { orderBy: { name: "asc" } },
         visibilities: {
           where: { projectId },
