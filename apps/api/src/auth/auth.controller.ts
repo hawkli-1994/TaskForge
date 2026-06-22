@@ -19,7 +19,7 @@ export class AuthController {
   ) {
     const result = await this.auth.register(input);
     this.setTokenCookie(res, result.token);
-    return { user: result.user };
+    return { user: result.user, token: result.token };
   }
 
   @Post("login")
@@ -29,7 +29,7 @@ export class AuthController {
   ) {
     const result = await this.auth.login(input);
     this.setTokenCookie(res, result.token);
-    return { user: result.user };
+    return { user: result.user, token: result.token };
   }
 
   @Post("logout")
