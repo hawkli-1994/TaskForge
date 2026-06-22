@@ -15,6 +15,7 @@ COPY packages/db/package.json ./packages/db/package.json
 COPY packages/contracts/package.json ./packages/contracts/package.json
 COPY packages/domain/package.json ./packages/domain/package.json
 COPY packages/repository-provider/package.json ./packages/repository-provider/package.json
+COPY packages/pi-agent/package.json ./packages/pi-agent/package.json
 
 RUN pnpm install --frozen-lockfile
 
@@ -25,6 +26,7 @@ RUN pnpm --filter @taskforge/contracts build
 RUN pnpm --filter @taskforge/domain build
 RUN pnpm --filter @taskforge/repository-provider build
 RUN pnpm --filter @taskforge/db build
+RUN pnpm --filter @taskforge/pi-agent build
 RUN pnpm --filter @taskforge/api build
 
 FROM base AS runner
@@ -45,6 +47,8 @@ COPY --from=builder /app/packages/domain/package.json ./packages/domain/package.
 COPY --from=builder /app/packages/domain/dist ./packages/domain/dist
 COPY --from=builder /app/packages/repository-provider/package.json ./packages/repository-provider/package.json
 COPY --from=builder /app/packages/repository-provider/dist ./packages/repository-provider/dist
+COPY --from=builder /app/packages/pi-agent/package.json ./packages/pi-agent/package.json
+COPY --from=builder /app/packages/pi-agent/dist ./packages/pi-agent/dist
 COPY --from=builder /app/node_modules ./node_modules
 
 CMD ["sh", "-c", "pnpm --filter @taskforge/db migrate:deploy:postgres && node apps/api/dist/main.js"]
