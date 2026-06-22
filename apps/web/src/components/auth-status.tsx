@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
@@ -21,11 +21,11 @@ function initials(name: string) {
 
 export function AuthStatus({ initialUser }: { initialUser?: User | null }) {
   const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
   const [user, setUser] = useState<User | null | undefined>(initialUser);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    // If the server could not provide a user (e.g. static generation), refresh
-    // client-side.
     if (user === undefined) {
       apiFetch<User>("/api/users/me")
         .then(setUser)
@@ -33,7 +33,23 @@ export function AuthStatus({ initialUser }: { initialUser?: User | null }) {
     }
   }, [user]);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [open]);
+
   async function logout() {
+    setOpen(false);
     await apiFetch("/api/auth/logout", { method: "POST" });
     setUser(null);
     router.push("/login");
@@ -64,19 +80,31 @@ export function AuthStatus({ initialUser }: { initialUser?: User | null }) {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white"
-        title={user.name}
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white outline-none ring-offset-2 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500"
+        aria-label="User menu"
       >
         {initials(user.name)}
-      </div>
-      <button
-        onClick={logout}
-        className="text-sm font-medium text-gray-500 hover:text-red-600"
-      >
-        Log out
       </button>
+
+      {open && (
+        <div className="absolute right-0 z-50 mt-2 w-48 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+          <div className="border-b border-gray-100 px-4 py-2">
+            <p className="truncate text-sm font-medium text-gray-900">
+              {user.name}
+            </p>
+            <p className="truncate text-xs text-gray-500">{user.email}</p>
+          </div>
+          <button
+            onClick={logout}
+            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50"
+          >
+            Log out
+          </button>
+        </div>
+      )}
     </div>
   );
 }
