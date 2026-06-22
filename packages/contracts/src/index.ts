@@ -148,7 +148,7 @@ export const RunnerRegisterInput = z.object({
   name: z.string().min(1).max(200),
   projectId: z.string().cuid2().optional(),
   adapter: z.string().max(100).optional(),
-  capabilities: z.record(z.unknown()).optional(),
+  capabilities: z.record(z.unknown()).or(z.array(z.string())).optional(),
   agents: z.array(RunnerAgentInput).optional(),
   scope: z.enum(["personal", "shared", "public"]).optional(),
 });
