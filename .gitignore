@@ -17,6 +17,8 @@ build/
 # database
 *.sqlite
 *.sqlite-journal
+*.db-shm
+*.db-wal
 packages/db/dev.db
 packages/db/test.db
 prisma/dev.db

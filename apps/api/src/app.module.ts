@@ -5,6 +5,8 @@ import { BullModule } from "@nestjs/bullmq";
 import { PrismaModule } from "./common/prisma.module";
 import { AuthModule } from "./auth/auth.module";
 import { DevAuthGuard } from "./auth/auth.guard";
+import { UsersModule } from "./users/users.module";
+import { TeamsModule } from "./teams/teams.module";
 import { ProjectsModule } from "./projects/projects.module";
 import { WorkItemsModule } from "./workitems/workitems.module";
 import { SessionsModule } from "./sessions/sessions.module";
@@ -19,18 +21,26 @@ const globalGuard: Provider = {
   useClass: DevAuthGuard,
 };
 
+const bullEnabled = process.env.TASKFORGE_DISABLE_BULLMQ !== "true";
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    BullModule.forRoot({
-      connection: {
-        url: process.env.REDIS_URL || "redis://localhost:6379",
-      },
-    }),
+    ...(bullEnabled
+      ? [
+          BullModule.forRoot({
+            connection: {
+              url: process.env.REDIS_URL || "redis://localhost:6379",
+            },
+          }),
+        ]
+      : []),
     PrismaModule,
     AuthModule,
     AuditModule,
     OutboxModule,
+    UsersModule,
+    TeamsModule,
     ProjectsModule,
     WorkItemsModule,
     SessionsModule,

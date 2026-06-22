@@ -10,11 +10,12 @@
     "test": "echo 'no tests'"
   },
   "dependencies": {
-    "bullmq": "^5.56.0",
-    "ioredis": "^5.6.0",
-    "@taskforge/db": "workspace:*",
     "@taskforge/contracts": "workspace:*",
-    "@taskforge/domain": "workspace:*"
+    "@taskforge/db": "workspace:*",
+    "@taskforge/domain": "workspace:*",
+    "@taskforge/pi-agent": "workspace:*",
+    "bullmq": "^5.56.0",
+    "ioredis": "^5.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

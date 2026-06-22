@@ -7,11 +7,54 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownedTeams          Team[]          @relation(name: "TeamOwner")
+  teamMemberships     TeamMember[]
+  projectMemberships  ProjectMember[]
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  owner     User     @relation(name: "TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  TeamMember[]
+  projects Project[]
+
+  @@index([ownerId])
+}
+
+model TeamMember {
+  id     String @id @default(cuid())
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
 model Project {
   id          String   @id @default(cuid())
   name        String
   description String?
   createdBy   String?
+  teamId      String?
+  team        Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -21,6 +64,24 @@ model Project {
   findings       Finding[]
   workItems      WorkItem[]
   runnerProfiles RunnerProfile[]
+  members        ProjectMember[]
+
+  @@index([teamId])
+}
+
+model ProjectMember {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, userId])
+  @@index([userId])
 }
 
 model Repository {
@@ -37,6 +98,8 @@ model Repository {
 
   bindings RepositoryBinding[]
   findings Finding[]
+  workItems WorkItem[]
+  pullRequests PullRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -92,6 +155,8 @@ model WorkItem {
   id                 String   @id @default(cuid())
   projectId          String
   project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  repositoryId       String?
+  repository         Repository? @relation(fields: [repositoryId], references: [id], onDelete: SetNull)
   type               String
   status             String
   priority           String
@@ -106,6 +171,7 @@ model WorkItem {
   sessions        AgentSession[]
   contextBundles  ContextBundle[]
   comments        WorkItemComment[]
+  pullRequests    PullRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -188,6 +254,7 @@ model AgentSession {
   activeForWorkItem WorkItem?      @relation(name: "WorkItemActiveSession")
   events            SessionEvent[]
   artifacts         Artifact[]
+  pullRequests      PullRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -231,6 +298,32 @@ model PromptVersion {
   @@unique([mode, version])
 }
 
+model PullRequest {
+  id            String     @id @default(cuid())
+  workItemId    String
+  workItem      WorkItem   @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  sessionId     String?
+  session       AgentSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  repositoryId  String
+  repository    Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  provider      String
+  number        Int?
+  externalId    String?
+  title         String?
+  headBranch    String
+  baseBranch    String     @default("main")
+  url           String?
+  commitSha     String?
+  state         String     @default("open")
+  createdBy     String     @default("local-agent")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workItemId])
+  @@index([sessionId])
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   actorId    String?
@@ -239,6 +332,8 @@ model AuditLog {
   targetId   String
   payload    Json?
   createdAt  DateTime @default(now())
+
+  @@index([actorId])
 }
 
 model OutboxEvent {

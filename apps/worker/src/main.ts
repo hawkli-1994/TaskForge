@@ -2,6 +2,7 @@ import { PrismaClient } from "@taskforge/db";
 import { createOutboxProcessor } from "./processors/outbox.processor";
 import { createDispatchProcessor } from "./processors/dispatch.processor";
 import { createRepoSyncProcessor } from "./processors/repo-sync.processor";
+import { createPiPrProcessor } from "./processors/pi-pr.processor";
 import { createRedisConnection } from "./redis";
 
 async function bootstrap(): Promise<void> {
@@ -12,6 +13,7 @@ async function bootstrap(): Promise<void> {
     createOutboxProcessor(prisma, redisOptions),
     createDispatchProcessor(prisma, redisOptions),
     createRepoSyncProcessor(redisOptions),
+    createPiPrProcessor(prisma, redisOptions),
   ];
 
   console.log("TaskForge worker started");

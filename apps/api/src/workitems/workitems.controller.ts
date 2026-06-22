@@ -20,8 +20,8 @@ export class WorkItemsController {
   }
 
   @Get(":id")
-  findOne(@Param("id") id: string) {
-    return this.workItems.findOne(id);
+  findOne(@Param("id") id: string, @ReqUser() user: RequestUser) {
+    return this.workItems.findOne(id, user.id);
   }
 
   @Patch(":id/status")

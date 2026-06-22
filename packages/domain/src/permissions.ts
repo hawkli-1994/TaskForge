@@ -1,4 +1,40 @@
-export type ProjectRole = "owner" | "maintainer" | "contributor" | "reviewer" | "viewer";
+export type ProjectRole = "owner" | "maintainer" | "contributor" | "viewer";
+export type TeamRole = "owner" | "admin" | "member";
+
+const PROJECT_ROLE_RANK: Record<ProjectRole, number> = {
+  owner: 4,
+  maintainer: 3,
+  contributor: 2,
+  viewer: 1,
+};
+
+const TEAM_ROLE_RANK: Record<TeamRole, number> = {
+  owner: 3,
+  admin: 2,
+  member: 1,
+};
+
+export function projectRoleRank(role: string): number {
+  return PROJECT_ROLE_RANK[role as ProjectRole] ?? 0;
+}
+
+export function teamRoleRank(role: string): number {
+  return TEAM_ROLE_RANK[role as TeamRole] ?? 0;
+}
+
+export function hasProjectAccess(
+  userRole: string,
+  requiredRole: ProjectRole,
+): boolean {
+  return projectRoleRank(userRole) >= projectRoleRank(requiredRole);
+}
+
+export function hasTeamAccess(
+  userRole: string,
+  requiredRole: TeamRole,
+): boolean {
+  return teamRoleRank(userRole) >= teamRoleRank(requiredRole);
+}
 
 const ROLE_ACTIONS: Record<ProjectRole, string[]> = {
   owner: ["*"],
@@ -23,13 +59,6 @@ const ROLE_ACTIONS: Record<ProjectRole, string[]> = {
     "workitem:stop_session_own",
     "session:read",
     "session:comment",
-  ],
-  reviewer: [
-    "project:read",
-    "workitem:read",
-    "session:read",
-    "session:comment",
-    "audit:read",
   ],
   viewer: ["project:read", "workitem:read", "session:read"],
 };

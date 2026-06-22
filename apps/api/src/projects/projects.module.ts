@@ -8,5 +8,6 @@ import { ProjectsController } from "./projects.controller";
   imports: [PrismaModule, AuditModule],
   providers: [ProjectsService],
   controllers: [ProjectsController],
+  exports: [ProjectsService],
 })
 export class ProjectsModule {}

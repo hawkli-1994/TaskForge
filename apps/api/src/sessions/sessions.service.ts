@@ -19,26 +19,44 @@ import {
 } from "@taskforge/domain";
 import { PrismaService } from "../common/prisma.service";
 import { AuditService } from "../audit/audit.service";
+import { OutboxService } from "../outbox/outbox.service";
+import { ProjectsService } from "../projects/projects.service";
 
 @Injectable()
 export class SessionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly outbox: OutboxService,
+    private readonly projects: ProjectsService,
   ) {}
 
   async create(input: CreateSessionInput, actorId: string) {
-    return this.prisma.$transaction(async (tx) => {
-      const workItem = await tx.workItem.findUnique({
+    const workItem = await this.prisma.workItem.findUnique({
+      where: { id: input.workItemId },
+    });
+    if (!workItem) {
+      throw new NotFoundException("Work item not found");
+    }
+    await this.projects.requireAccess(
+      actorId,
+      workItem.projectId,
+      "contributor",
+    );
+
+    let outboxEventId: string | undefined;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const workItemInTx = await tx.workItem.findUnique({
         where: { id: input.workItemId },
       });
-      if (!workItem) {
+      if (!workItemInTx) {
         throw new NotFoundException("Work item not found");
       }
       if (
         !canStartWorkItemSession(
-          workItem.status as WorkItemStatus,
-          workItem.activeSessionId,
+          workItemInTx.status as WorkItemStatus,
+          workItemInTx.activeSessionId,
         )
       ) {
         throw new BadRequestException(
@@ -47,16 +65,16 @@ export class SessionsService {
       }
 
       let bundle = await tx.contextBundle.findFirst({
-        where: { workItemId: workItem.id },
+        where: { workItemId: workItemInTx.id },
         orderBy: { version: "desc" },
       });
       if (!bundle) {
-        bundle = await this.compileBundleInTx(tx, workItem);
+        bundle = await this.compileBundleInTx(tx, workItemInTx);
       }
 
       const session = await tx.agentSession.create({
         data: {
-          workItemId: workItem.id,
+          workItemId: workItemInTx.id,
           contextBundleId: bundle!.id,
           mode: input.mode,
           status: "created",
@@ -85,17 +103,18 @@ export class SessionsService {
       });
 
       await tx.workItem.update({
-        where: { id: workItem.id },
+        where: { id: workItemInTx.id },
         data: { status: "in_progress", activeSessionId: session.id },
       });
 
-      await tx.outboxEvent.create({
+      const outboxEvent = await tx.outboxEvent.create({
         data: {
           type: "prepare_acp_prompt",
           payload: { sessionId: session.id },
           status: "pending",
         },
       });
+      outboxEventId = outboxEvent.id;
 
       await tx.auditLog.create({
         data: {
@@ -103,7 +122,7 @@ export class SessionsService {
           actorId,
           targetType: "session",
           targetId: session.id,
-          payload: { workItemId: workItem.id, mode: input.mode },
+          payload: { workItemId: workItemInTx.id, mode: input.mode },
         },
       });
 
@@ -117,9 +136,21 @@ export class SessionsService {
         },
       });
     });
+
+    if (outboxEventId) {
+      const enqueued = await this.outbox.enqueueJob(outboxEventId);
+      if (!enqueued) {
+        // BullMQ disabled; process outbox synchronously so Runner can claim.
+        if (result?.id) {
+          await this.outbox.processPrepareAcpPrompt(result.id);
+        }
+      }
+    }
+
+    return result;
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorId: string) {
     const session = await this.prisma.agentSession.findUnique({
       where: { id },
       include: {
@@ -132,10 +163,27 @@ export class SessionsService {
     if (!session) {
       throw new NotFoundException("Session not found");
     }
+    await this.projects.requireAccess(
+      actorId,
+      session.workItem.projectId,
+      "viewer",
+    );
     return session;
   }
 
-  async findEvents(id: string, afterSeq?: number) {
+  async findEvents(id: string, actorId: string, afterSeq?: number) {
+    const session = await this.prisma.agentSession.findUnique({
+      where: { id },
+      include: { workItem: true },
+    });
+    if (!session) {
+      throw new NotFoundException("Session not found");
+    }
+    await this.projects.requireAccess(
+      actorId,
+      session.workItem.projectId,
+      "viewer",
+    );
     return this.prisma.sessionEvent.findMany({
       where: {
         sessionId: id,
@@ -150,9 +198,22 @@ export class SessionsService {
     input: HumanInputEventInput,
     actorId: string,
   ) {
+    const session = await this.prisma.agentSession.findUnique({
+      where: { id },
+      include: { workItem: true },
+    });
+    if (!session) {
+      throw new NotFoundException("Session not found");
+    }
+    await this.projects.requireAccess(
+      actorId,
+      session.workItem.projectId,
+      "contributor",
+    );
+
     return this.prisma.$transaction(async (tx) => {
-      const session = await tx.agentSession.findUnique({ where: { id } });
-      if (!session) {
+      const sessionInTx = await tx.agentSession.findUnique({ where: { id } });
+      if (!sessionInTx) {
         throw new NotFoundException("Session not found");
       }
       const maxSeq = await tx.sessionEvent.aggregate({
@@ -168,7 +229,7 @@ export class SessionsService {
           payload: { body: input.body, actorId },
         },
       });
-      if (session.status === "awaiting_input") {
+      if (sessionInTx.status === "awaiting_input") {
         await tx.agentSession.update({
           where: { id },
           data: { status: "running" },
@@ -188,16 +249,29 @@ export class SessionsService {
       throw new BadRequestException("finalStatus must be terminal");
     }
 
+    const session = await this.prisma.agentSession.findUnique({
+      where: { id },
+      include: { workItem: true },
+    });
+    if (!session) {
+      throw new NotFoundException("Session not found");
+    }
+    await this.projects.requireAccess(
+      actorId,
+      session.workItem.projectId,
+      "contributor",
+    );
+    if (!isSessionActive(session.status as SessionStatus)) {
+      throw new BadRequestException("Session is not active");
+    }
+
     return this.prisma.$transaction(async (tx) => {
-      const session = await tx.agentSession.findUnique({
+      const sessionInTx = await tx.agentSession.findUnique({
         where: { id },
         include: { workItem: true },
       });
-      if (!session) {
+      if (!sessionInTx) {
         throw new NotFoundException("Session not found");
-      }
-      if (!isSessionActive(session.status as SessionStatus)) {
-        throw new BadRequestException("Session is not active");
       }
 
       const maxSeq = await tx.sessionEvent.aggregate({
@@ -227,9 +301,9 @@ export class SessionsService {
       if (workItemStatus) {
         workItemUpdate.status = workItemStatus;
       }
-      if (session.workItem.activeSessionId === id) {
+      if (sessionInTx.workItem.activeSessionId === id) {
         await tx.workItem.update({
-          where: { id: session.workItem.id },
+          where: { id: sessionInTx.workItem.id },
           data: workItemUpdate,
         });
       }
@@ -269,13 +343,10 @@ export class SessionsService {
       _max: { version: true },
     });
     const nextVersion = (maxVersion._max.version ?? 0) + 1;
-    const promptInput = (latestPrompt?.template ?? "")
-      .replace(/{{title}}/g, workItem.title)
-      .replace(/{{description}}/g, workItem.description ?? "")
-      .replace(
-        /{{acceptanceCriteria}}/g,
-        workItem.acceptanceCriteria ?? "",
-      );
+    // promptInput holds additional context (file paths, notes) that the prompt
+    // template injects under {{context}}. The template itself already provides
+    // the task structure, so we keep this field minimal to avoid duplication.
+    const promptInput = "";
 
     return tx.contextBundle.create({
       data: {

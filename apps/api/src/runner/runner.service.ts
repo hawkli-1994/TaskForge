@@ -23,6 +23,8 @@ import {
 } from "@taskforge/domain";
 import { PrismaService } from "../common/prisma.service";
 import { AuditService } from "../audit/audit.service";
+import { OutboxService } from "../outbox/outbox.service";
+import { ProjectsService } from "../projects/projects.service";
 
 const EVENT_TO_SESSION_STATUS: Partial<Record<EventType, SessionStatus>> = {
   "session.started": "running",
@@ -42,9 +44,16 @@ export class RunnerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly outbox: OutboxService,
+    private readonly projects: ProjectsService,
   ) {}
 
   async register(input: RunnerRegisterInput, actorId: string) {
+    if (input.projectId) {
+      await this.projects.requireAccess(actorId, input.projectId, "contributor");
+    }
+
+    const token = crypto.randomUUID();
     const runner = await this.prisma.runnerProfile.create({
       data: {
         ownerId: actorId,
@@ -59,7 +68,7 @@ export class RunnerService {
     await this.audit.log("runner.registered", actorId, "runner", runner.id, {
       name: input.name,
     });
-    return runner;
+    return { runner_id: runner.id, token };
   }
 
   async heartbeat(runnerId: string, input: RunnerHeartbeatInput) {
@@ -158,15 +167,17 @@ export class RunnerService {
         sessionId: session.id,
         workItemId: session.workItemId,
         projectId: session.workItem.projectId,
+        repositoryId: session.workItem.repositoryId ?? null,
         mode: session.mode,
         content: `ACP prompt for ${session.mode}: ${
           session.contextBundle?.promptInput ??
           session.workItem.description ??
           ""
         }`,
+        nextSeq: seq + 1,
       };
 
-      return { sessionId: session.id, acp };
+      return acp;
     });
   }
 
@@ -175,7 +186,9 @@ export class RunnerService {
     sessionId: string,
     input: AppendSessionEventInput,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    let terminal = false;
+
+    const result = await this.prisma.$transaction(async (tx) => {
       const session = await tx.agentSession.findUnique({
         where: { id: sessionId },
         include: { workItem: true },
@@ -216,6 +229,7 @@ export class RunnerService {
         } = { status: newStatus };
         if (isSessionTerminal(newStatus)) {
           updateData.completedAt = new Date();
+          terminal = true;
         }
         await tx.agentSession.update({
           where: { id: sessionId },
@@ -257,6 +271,15 @@ export class RunnerService {
         include: { events: { orderBy: { seq: "asc" } } },
       });
     });
+
+    if (terminal) {
+      // Kick off PR resolution after the session reaches a terminal state.
+      await this.outbox.enqueueResolvePr(sessionId).catch((err) => {
+        console.error(`[runner] resolve_pr enqueue failed:`, err);
+      });
+    }
+
+    return result;
   }
 
   async uploadArtifact(

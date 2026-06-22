@@ -1,7 +1,7 @@
 import { PrismaClient } from "@taskforge/db";
-import { Worker, Job, UnrecoverableError } from "bullmq";
+import { Worker, Job, UnrecoverableError, Queue } from "bullmq";
 import type { RedisOptions } from "ioredis";
-import { OUTBOX_QUEUE } from "../queue-names";
+import { OUTBOX_QUEUE, DISPATCH_QUEUE } from "../queue-names";
 import { createRedisConnection } from "../redis";
 
 type WorkItemLike = {
@@ -33,7 +33,10 @@ function renderPrompt(
     .replaceAll("{{projectId}}", workItem.projectId)
     .replaceAll("{{goal}}", goal)
     .replaceAll("{{acceptanceCriteria}}", acceptanceCriteria)
-    .replaceAll("{{context}}", context);
+    .replaceAll("{{context}}", context)
+    .replaceAll("{{title}}", workItem.title)
+    .replaceAll("{{description}}", workItem.description ?? "")
+    .replaceAll("{{summary}}", contextBundle?.goal ?? workItem.title);
 }
 
 function nextSeq(lastSeq: number | null | undefined): number {
@@ -44,6 +47,9 @@ export function createOutboxProcessor(
   prisma: PrismaClient,
   redis?: RedisOptions,
 ): Worker {
+  const connection = redis ?? createRedisConnection();
+  const dispatchQueue = new Queue(DISPATCH_QUEUE, { connection });
+
   return new Worker(
     OUTBOX_QUEUE,
     async (job: Job<{ eventId: string }>) => {
@@ -133,6 +139,8 @@ export function createOutboxProcessor(
             data: { status: "done" },
           }),
         ]);
+
+        await dispatchQueue.add("dispatch", { sessionId: session.id });
       } catch (err) {
         const retryCount = event.retryCount + 1;
         const isUnrecoverable =
@@ -191,6 +199,6 @@ export function createOutboxProcessor(
         throw err;
       }
     },
-    { connection: redis ?? createRedisConnection() },
+    { connection },
   );
 }

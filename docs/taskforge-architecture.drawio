@@ -1,0 +1,212 @@
+<mxfile host="65bd71144e">
+    <diagram name="TaskForge v0.1 Architecture" id="taskforge-arch">
+        <mxGraphModel dx="1483" dy="1139" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="clientLayer" value="Client Layer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;dashed=1;dashPattern=1 1;verticalAlign=top;align=left;fontSize=14;fontStyle=1;spacingLeft=10;spacingTop=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="20" width="420" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="webApp" value="&lt;b&gt;Next.js 14 Web UI&lt;/b&gt;&lt;br&gt;apiFetch (REST) + EventSource (SSE)&lt;br&gt;/ /projects/:id/board /sessions/:id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" parent="clientLayer" vertex="1">
+                    <mxGeometry x="60" y="50" width="300" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="platformLayer" value="TaskForge Control Plane (NestJS / TypeScript)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;dashed=1;dashPattern=1 1;verticalAlign=top;align=left;fontSize=14;fontStyle=1;spacingLeft=10;spacingTop=10;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="420" width="1440" height="820" as="geometry"/>
+                </mxCell>
+                <mxCell id="apiContainer" value="NestJS REST API" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#0288d1;strokeWidth=2;verticalAlign=top;align=left;fontSize=13;fontStyle=1;spacingLeft=10;spacingTop=10;" parent="platformLayer" vertex="1">
+                    <mxGeometry x="38.91891891891892" y="78.84615384615384" width="797.8378378378379" height="536.1538461538462" as="geometry"/>
+                </mxCell>
+                <mxCell id="modAuth" value="Auth&lt;br&gt;(Dev header guard)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="apiContainer" vertex="1">
+                    <mxGeometry x="38.91891891891892" y="78.84615384615385" width="116.75675675675676" height="78.84615384615385" as="geometry"/>
+                </mxCell>
+                <mxCell id="modUsers" value="Users" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="apiContainer" vertex="1">
+                    <mxGeometry x="184.86486486486487" y="78.84615384615385" width="116.75675675675676" height="78.84615384615385" as="geometry"/>
+                </mxCell>
+                <mxCell id="modTeams" value="Teams" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="apiContainer" vertex="1">
+                    <mxGeometry x="330.81081081081084" y="78.84615384615385" width="116.75675675675676" height="78.84615384615385" as="geometry"/>
+                </mxCell>
+                <mxCell id="modProjects" value="Projects" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="apiContainer" vertex="1">
+                    <mxGeometry x="476.7567567567568" y="78.84615384615385" width="116.75675675675676" height="78.84615384615385" as="geometry"/>
+                </mxCell>
+                <mxCell id="modWorkItems" value="WorkItems" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="apiContainer" vertex="1">
+                    <mxGeometry x="622.7027027027027" y="78.84615384615385" width="116.75675675675676" height="78.84615384615385" as="geometry"/>
+                </mxCell>
+                <mxCell id="modSessions" value="Sessions&lt;br&gt;(SSE stream)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="apiContainer" vertex="1">
+                    <mxGeometry x="38.91891891891892" y="205.00000000000003" width="116.75675675675676" height="78.84615384615385" as="geometry"/>
+                </mxCell>
+                <mxCell id="modRunner" value="Runner&lt;br&gt;(control plane)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="apiContainer" vertex="1">
+                    <mxGeometry x="184.86486486486487" y="205.00000000000003" width="116.75675675675676" height="78.84615384615385" as="geometry"/>
+                </mxCell>
+                <mxCell id="modRepositories" value="Repositories" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="apiContainer" vertex="1">
+                    <mxGeometry x="330.81081081081084" y="205.00000000000003" width="116.75675675675676" height="78.84615384615385" as="geometry"/>
+                </mxCell>
+                <mxCell id="modArtifacts" value="Artifacts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="apiContainer" vertex="1">
+                    <mxGeometry x="476.7567567567568" y="205.00000000000003" width="116.75675675675676" height="78.84615384615385" as="geometry"/>
+                </mxCell>
+                <mxCell id="modAudit" value="Audit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="apiContainer" vertex="1">
+                    <mxGeometry x="622.7027027027027" y="205.00000000000003" width="116.75675675675676" height="78.84615384615385" as="geometry"/>
+                </mxCell>
+                <mxCell id="modOutbox" value="Outbox" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" parent="apiContainer" vertex="1">
+                    <mxGeometry x="38.91891891891892" y="331.1538461538462" width="116.75675675675676" height="78.84615384615385" as="geometry"/>
+                </mxCell>
+                <mxCell id="domainLabel" value="Permissions, state machines, role checks via @taskforge/domain" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2" parent="apiContainer" vertex="1">
+                    <mxGeometry x="184.86486486486487" y="331.1538461538462" width="554.5945945945946" height="47.307692307692314" as="geometry"/>
+                </mxCell>
+                <mxCell id="workerContainer" value="BullMQ Worker (background jobs)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#43a047;strokeWidth=2;verticalAlign=top;align=left;fontSize=13;fontStyle=1;spacingLeft=10;spacingTop=10;" parent="platformLayer" vertex="1">
+                    <mxGeometry x="875.6756756756757" y="78.84615384615384" width="428.1081081081081" height="315.38461538461536" as="geometry"/>
+                </mxCell>
+                <mxCell id="procOutbox" value="Outbox Processor&lt;br&gt;(render ACP prompt)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#43a047;fontSize=11;" parent="workerContainer" vertex="1">
+                    <mxGeometry x="38.91891891891892" y="78.84615384615384" width="165.40540540540542" height="78.84615384615384" as="geometry"/>
+                </mxCell>
+                <mxCell id="procDispatch" value="Dispatch Processor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#43a047;fontSize=11;" parent="workerContainer" vertex="1">
+                    <mxGeometry x="233.51351351351352" y="78.84615384615384" width="145.94594594594597" height="78.84615384615384" as="geometry"/>
+                </mxCell>
+                <mxCell id="procRepoSync" value="Repo Sync Processor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#43a047;fontSize=11;" parent="workerContainer" vertex="1">
+                    <mxGeometry x="38.91891891891892" y="189.23076923076923" width="165.40540540540542" height="78.84615384615384" as="geometry"/>
+                </mxCell>
+                <mxCell id="procPiPr" value="PI-PR Processor&lt;br&gt;(detect / create PR)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#43a047;fontSize=11;" parent="workerContainer" vertex="1">
+                    <mxGeometry x="233.51351351351352" y="189.23076923076923" width="145.94594594594597" height="78.84615384615384" as="geometry"/>
+                </mxCell>
+                <mxCell id="sharedContainer" value="Shared Packages" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f9a825;strokeWidth=2;verticalAlign=top;align=left;fontSize=13;fontStyle=1;spacingLeft=10;spacingTop=10;" parent="platformLayer" vertex="1">
+                    <mxGeometry x="875.6756756756757" y="441.53846153846155" width="428.1081081081081" height="205" as="geometry"/>
+                </mxCell>
+                <mxCell id="pkgContracts" value="contracts&lt;br&gt;(Zod DTOs)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#f9a825;fontSize=11;" parent="sharedContainer" vertex="1">
+                    <mxGeometry x="38.91891891891892" y="70.96153846153845" width="87.56756756756758" height="78.84615384615384" as="geometry"/>
+                </mxCell>
+                <mxCell id="pkgDomain" value="domain&lt;br&gt;(roles / state machines)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#f9a825;fontSize=11;" parent="sharedContainer" vertex="1">
+                    <mxGeometry x="145.94594594594597" y="70.96153846153845" width="116.75675675675676" height="78.84615384615384" as="geometry"/>
+                </mxCell>
+                <mxCell id="pkgDb" value="db&lt;br&gt;(Prisma schema)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#f9a825;fontSize=11;" parent="sharedContainer" vertex="1">
+                    <mxGeometry x="282.1621621621622" y="70.96153846153845" width="97.2972972972973" height="78.84615384615384" as="geometry"/>
+                </mxCell>
+                <mxCell id="pkgPiAgent" value="pi-agent&lt;br&gt;(LLM PR resolution)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#f9a825;fontSize=11;" parent="sharedContainer" vertex="1">
+                    <mxGeometry x="77.83783783783784" y="126.15384615384615" width="126.4864864864865" height="63.07692307692307" as="geometry"/>
+                </mxCell>
+                <mxCell id="pkgRepoProvider" value="repository-provider&lt;br&gt;(port abstractions)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#f9a825;fontSize=11;" parent="sharedContainer" vertex="1">
+                    <mxGeometry x="223.7837837837838" y="126.15384615384615" width="145.94594594594597" height="63.07692307692307" as="geometry"/>
+                </mxCell>
+                <mxCell id="dataLayer" value="Data &amp; Messaging" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;dashed=1;dashPattern=1 1;verticalAlign=top;align=left;fontSize=14;fontStyle=1;spacingLeft=10;spacingTop=10;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="1190" width="740" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="db" value="&lt;b&gt;SQLite / PostgreSQL&lt;/b&gt;&lt;br&gt;Prisma&lt;br&gt;User · Project · WorkItem · Session · Event · Artifact · AuditLog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="dataLayer" vertex="1">
+                    <mxGeometry x="40" y="45" width="280" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="redis" value="&lt;b&gt;Redis&lt;/b&gt;&lt;br&gt;BullMQ queues" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" parent="dataLayer" vertex="1">
+                    <mxGeometry x="360" y="45" width="140" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="minio" value="&lt;b&gt;MinIO / S3&lt;/b&gt;&lt;br&gt;Artifact binary store&lt;br&gt;(planned)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="dataLayer" vertex="1">
+                    <mxGeometry x="540" y="45" width="160" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="externalLayer" value="External Services" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;dashed=1;dashPattern=1 1;verticalAlign=top;align=left;fontSize=14;fontStyle=1;spacingLeft=10;spacingTop=10;" parent="1" vertex="1">
+                    <mxGeometry x="1680" y="1320" width="700" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" style="edgeStyle=none;html=1;" edge="1" parent="externalLayer" source="github" target="externalLayer">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="github" value="GitHub API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="externalLayer" vertex="1">
+                    <mxGeometry x="40" y="45" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="gitlab" value="GitLab API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="externalLayer" vertex="1">
+                    <mxGeometry x="190" y="45" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="llm" value="OpenAI / Anthropic&lt;br&gt;(LLM)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="externalLayer" vertex="1">
+                    <mxGeometry x="340" y="45" width="140" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="acp" value="ACP Agent&lt;br&gt;(OpenCode / Codex CLI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="externalLayer" vertex="1">
+                    <mxGeometry x="510" y="45" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="localLayer" value="User Local Execution (Rust)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;dashed=1;dashPattern=1 1;verticalAlign=top;align=left;fontSize=14;fontStyle=1;spacingLeft=10;spacingTop=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="1540" width="1480" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="rustRunner" value="&lt;b&gt;taskforge-runner&lt;/b&gt;&lt;br&gt;register · heartbeat · claim · execute · upload&lt;br&gt;spool · redaction · repo bindings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;" parent="localLayer" vertex="1">
+                    <mxGeometry x="40" y="45" width="280" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="localGit" value="Local Git Repository" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="localLayer" vertex="1">
+                    <mxGeometry x="360" y="45" width="160" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="runnerCore" value="runner-core&lt;br&gt;platform client · ACP host · config · auth" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;dashed=1;" parent="localLayer" vertex="1">
+                    <mxGeometry x="560" y="45" width="220" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="eWebApi" value="REST / SSE&#xa;x-taskforge-user-id" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.14;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="webApp" target="apiContainer" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eApiDb" value="Prisma" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="apiContainer" target="db" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eApiRedis" value="BullMQ enqueue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="apiContainer" target="redis" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="940" y="365"/>
+                            <mxPoint x="940" y="805"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="eApiMinio" value="artifact storage (planned)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.95;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;dashed=1;" parent="1" source="apiContainer" target="minio" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="820" y="530"/>
+                            <mxPoint x="820" y="805"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="eWorkerRedis" value="consume" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="workerContainer" target="redis" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="900" y="340"/>
+                            <mxPoint x="900" y="805"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="eWorkerDb" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="workerContainer" target="db" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eRepoProviders" value="provider port" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="modRepositories" target="pkgRepoProvider" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eRepoToGithub" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="pkgRepoProvider" target="github" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eRepoToGitlab" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="pkgRepoProvider" target="gitlab" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ePiPrLlm" value="detect PR from transcript" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="procPiPr" target="llm" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ePiPrGitlab" value="create MR" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="procPiPr" target="gitlab" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ePiPrGithub" value="create PR" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="procPiPr" target="github" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eRunnerApi" value="register / heartbeat / claim / events / artifacts&#xa;token auth" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="rustRunner" target="apiContainer" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="200" y="940"/>
+                            <mxPoint x="200" y="740"/>
+                            <mxPoint x="260" y="740"/>
+                            <mxPoint x="260" y="390"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="eRunnerAcp" value="stdio JSON-RPC (ACP v1)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="rustRunner" target="acp" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="360" y="985"/>
+                            <mxPoint x="360" y="812"/>
+                            <mxPoint x="1310" y="812"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="eRunnerGit" value="read / write" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="rustRunner" target="localGit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eRunnerCore" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;dashed=1;" parent="1" source="rustRunner" target="runnerCore" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eOutboxWorker" value="enqueue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;fontSize=11;" parent="1" source="modOutbox" target="procOutbox" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

@@ -11,15 +11,19 @@ import {
 import { canTransitionWorkItem } from "@taskforge/domain";
 import { PrismaService } from "../common/prisma.service";
 import { AuditService } from "../audit/audit.service";
+import { ProjectsService } from "../projects/projects.service";
 
 @Injectable()
 export class WorkItemsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly projects: ProjectsService,
   ) {}
 
   async create(input: CreateWorkItemInput, actorId: string) {
+    await this.projects.requireAccess(actorId, input.projectId, "contributor");
+
     const workItem = await this.prisma.workItem.create({
       data: { ...input, status: "backlog" },
     });
@@ -30,7 +34,7 @@ export class WorkItemsService {
     return workItem;
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorId: string) {
     const workItem = await this.prisma.workItem.findUnique({
       where: { id },
       include: {
@@ -42,6 +46,7 @@ export class WorkItemsService {
     if (!workItem) {
       throw new NotFoundException("Work item not found");
     }
+    await this.projects.requireAccess(actorId, workItem.projectId, "viewer");
     return workItem;
   }
 
@@ -54,6 +59,11 @@ export class WorkItemsService {
     if (!workItem) {
       throw new NotFoundException("Work item not found");
     }
+    await this.projects.requireAccess(
+      actorId,
+      workItem.projectId,
+      "contributor",
+    );
     if (
       !canTransitionWorkItem(
         workItem.status as WorkItemStatus,
@@ -83,6 +93,11 @@ export class WorkItemsService {
     if (!workItem) {
       throw new NotFoundException("Work item not found");
     }
+    await this.projects.requireAccess(
+      actorId,
+      workItem.projectId,
+      "contributor",
+    );
 
     const latestPrompt = await this.prisma.promptVersion.findFirst({
       where: { mode: "goal" },

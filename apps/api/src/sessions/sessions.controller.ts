@@ -32,17 +32,19 @@ export class SessionsController {
   }
 
   @Get(":id")
-  findOne(@Param("id") id: string) {
-    return this.sessions.findOne(id);
+  findOne(@Param("id") id: string, @ReqUser() user: RequestUser) {
+    return this.sessions.findOne(id, user.id);
   }
 
   @Get(":id/events")
   findEvents(
     @Param("id") id: string,
+    @ReqUser() user: RequestUser,
     @Query("afterSeq") afterSeq?: string,
   ) {
     return this.sessions.findEvents(
       id,
+      user.id,
       afterSeq === undefined ? undefined : Number(afterSeq),
     );
   }
@@ -52,6 +54,7 @@ export class SessionsController {
     @Param("id") id: string,
     @Query("afterSeq") afterSeq: string | undefined,
     @Res() res: Response,
+    @ReqUser() user: RequestUser,
   ) {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -60,7 +63,11 @@ export class SessionsController {
 
     let lastSeq = afterSeq ? Number(afterSeq) : 0;
     while (!res.destroyed) {
-      const events = await this.sessions.findEvents(id, lastSeq || undefined);
+      const events = await this.sessions.findEvents(
+        id,
+        user.id,
+        lastSeq || undefined,
+      );
       for (const event of events) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
         if (event.seq > lastSeq) {

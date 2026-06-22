@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaModule } from "../common/prisma.module";
 import { AuditModule } from "../audit/audit.module";
+import { ProjectsModule } from "../projects/projects.module";
 import { GitHubRepositoryProvider, RepositoryProvider } from "./provider.port";
 import { GitLabRepositoryProvider } from "./gitlab.provider";
 import { RepositoriesService } from "./repositories.service";
@@ -11,7 +12,7 @@ import { REPOSITORY_PROVIDERS } from "./repositories.constants";
 export type RepositoryProviderMap = Record<string, RepositoryProvider>;
 
 @Module({
-  imports: [PrismaModule, AuditModule],
+  imports: [PrismaModule, AuditModule, ProjectsModule],
   providers: [
     RepositoriesService,
     {

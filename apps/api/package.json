@@ -26,7 +26,8 @@
     "@prisma/client": "^6.6.0",
     "@taskforge/db": "workspace:*",
     "@taskforge/contracts": "workspace:*",
-    "@taskforge/domain": "workspace:*"
+    "@taskforge/domain": "workspace:*",
+    "@taskforge/pi-agent": "workspace:*"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",

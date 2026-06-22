@@ -59,6 +59,13 @@ export const EventType = z.enum([
   "agent.input.created",
   "agent.output.delta",
   "agent.output.completed",
+  "agent.thinking",
+  "agent.message",
+  "tool.call",
+  "tool.call_update",
+  "usage.update",
+  "acp.available_commands",
+  "acp.update",
   "command.started",
   "command.output",
   "command.finished",
@@ -81,6 +88,7 @@ export type EventType = z.infer<typeof EventType>;
 export const CreateProjectInput = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
+  teamId: z.string().cuid2().optional(),
 });
 export type CreateProjectInput = z.infer<typeof CreateProjectInput>;
 
@@ -92,6 +100,7 @@ export const CreateWorkItemInput = z.object({
   description: z.string().max(5000).optional(),
   acceptanceCriteria: z.string().max(5000).optional(),
   reproductionSteps: z.string().max(5000).optional(),
+  repositoryId: z.string().cuid2().optional(),
 });
 export type CreateWorkItemInput = z.infer<typeof CreateWorkItemInput>;
 
@@ -125,7 +134,7 @@ export type RunnerRegisterInput = z.infer<typeof RunnerRegisterInput>;
 export const RunnerHeartbeatInput = z.object({
   status: RunnerStatus,
   version: z.string().max(50).optional(),
-  capabilities: z.record(z.unknown()).optional(),
+  capabilities: z.record(z.unknown()).or(z.array(z.string())).optional(),
   bindings: z
     .array(
       z.object({
@@ -161,3 +170,47 @@ export const RepositoryProviderInput = z.object({
   defaultBranch: z.string().max(200).optional(),
 });
 export type RepositoryProviderInput = z.infer<typeof RepositoryProviderInput>;
+
+export const ProjectRole = z.enum([
+  "owner",
+  "maintainer",
+  "contributor",
+  "viewer",
+]);
+export type ProjectRole = z.infer<typeof ProjectRole>;
+
+export const TeamRole = z.enum(["owner", "admin", "member"]);
+export type TeamRole = z.infer<typeof TeamRole>;
+
+export const CreateUserInput = z.object({
+  email: z.string().email().max(255),
+  name: z.string().min(1).max(200),
+});
+export type CreateUserInput = z.infer<typeof CreateUserInput>;
+
+export const CreateTeamInput = z.object({
+  name: z.string().min(1).max(200),
+});
+export type CreateTeamInput = z.infer<typeof CreateTeamInput>;
+
+export const AddTeamMemberInput = z.object({
+  userId: z.string().cuid2(),
+  role: TeamRole,
+});
+export type AddTeamMemberInput = z.infer<typeof AddTeamMemberInput>;
+
+export const UpdateTeamMemberRoleInput = z.object({
+  role: TeamRole,
+});
+export type UpdateTeamMemberRoleInput = z.infer<typeof UpdateTeamMemberRoleInput>;
+
+export const AddProjectMemberInput = z.object({
+  userId: z.string().cuid2(),
+  role: ProjectRole,
+});
+export type AddProjectMemberInput = z.infer<typeof AddProjectMemberInput>;
+
+export const UpdateProjectMemberRoleInput = z.object({
+  role: ProjectRole,
+});
+export type UpdateProjectMemberRoleInput = z.infer<typeof UpdateProjectMemberRoleInput>;

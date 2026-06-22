@@ -1,3 +1,4 @@
+pub mod acp_host;
 pub mod agent_host;
 pub mod auth;
 pub mod binding;
@@ -7,6 +8,7 @@ pub mod platform;
 pub mod redaction;
 pub mod spool;
 
+pub use acp_host::AcpAgentHost;
 pub use agent_host::{AgentHost, SessionEvent, StubAgentHost};
 pub use auth::{AuthData, AuthStore};
 pub use binding::LocalBindingStore;

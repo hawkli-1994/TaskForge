@@ -1,24 +1,62 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { Prisma } from "@prisma/client";
+import {
+  loadPiAgentConfigFromEnv,
+  resolvePullRequestForSession,
+} from "@taskforge/pi-agent";
 import { PrismaService } from "../common/prisma.service";
 
 @Injectable()
 export class OutboxService {
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue("runner.dispatch") private readonly runnerQueue: Queue,
+    @Optional()
+    @InjectQueue("outbox")
+    private readonly outboxQueue: Queue | undefined,
+    @Optional()
+    @InjectQueue("runner.dispatch")
+    private readonly runnerQueue: Queue | undefined,
+    @Optional()
+    @InjectQueue("pi.pr")
+    private readonly piPrQueue: Queue | undefined,
   ) {}
 
   async enqueue(type: string, payload: Record<string, unknown>) {
-    return this.prisma.outboxEvent.create({
+    const event = await this.prisma.outboxEvent.create({
       data: {
         type,
         payload: payload as Prisma.InputJsonValue,
         status: "pending",
       },
     });
+
+    await this.enqueueJob(event.id);
+    return event;
+  }
+
+  async enqueueJob(eventId: string): Promise<boolean> {
+    if (this.outboxQueue) {
+      await this.outboxQueue.add("process", { eventId });
+      return true;
+    }
+    return false;
+  }
+
+  async enqueueResolvePr(sessionId: string) {
+    if (this.piPrQueue) {
+      await this.piPrQueue.add("process", { sessionId });
+      return;
+    }
+
+    // BullMQ disabled; run PR resolution synchronously so dev/E2E still works.
+    await this.processResolvePr(sessionId);
+  }
+
+  async processResolvePr(sessionId: string) {
+    const config = loadPiAgentConfigFromEnv();
+    await resolvePullRequestForSession(this.prisma, config, sessionId);
   }
 
   async processPrepareAcpPrompt(sessionId: string) {
@@ -61,23 +99,43 @@ export class OutboxService {
       },
     });
 
-    await this.runnerQueue.add("dispatch", { sessionId });
+    if (this.runnerQueue) {
+      await this.runnerQueue.add("dispatch", { sessionId });
+    } else if (nextStatus === "dispatching") {
+      // In dev mode without BullMQ, rely on Runner polling claim endpoint.
+      // Status is already set to dispatching, so synchronous enqueue is not needed.
+    }
   }
 
   private renderPrompt(
     template: string,
-    workItem: { title: string; description: string | null; acceptanceCriteria: string | null },
+    workItem: {
+      id: string;
+      projectId: string;
+      title: string;
+      description: string | null;
+      acceptanceCriteria: string | null;
+    },
     bundle?: {
       summary: string | null;
       goal: string | null;
       acceptanceCriteria: string | null;
+      promptInput: string | null;
     } | null,
   ) {
+    const goal = bundle?.goal ?? workItem.title ?? "";
+    const acceptanceCriteria =
+      bundle?.acceptanceCriteria ?? workItem.acceptanceCriteria ?? "";
+    const context = bundle?.promptInput ?? "";
+
     return template
+      .replace(/{{workItemId}}/g, workItem.id)
+      .replace(/{{projectId}}/g, workItem.projectId)
+      .replace(/{{goal}}/g, goal)
+      .replace(/{{acceptanceCriteria}}/g, acceptanceCriteria)
+      .replace(/{{context}}/g, context)
       .replace(/{{title}}/g, workItem.title)
       .replace(/{{description}}/g, workItem.description ?? "")
-      .replace(/{{acceptanceCriteria}}/g, workItem.acceptanceCriteria ?? "")
-      .replace(/{{summary}}/g, bundle?.summary ?? workItem.title)
-      .replace(/{{goal}}/g, bundle?.goal ?? workItem.description ?? "");
+      .replace(/{{summary}}/g, bundle?.summary ?? workItem.title);
   }
 }

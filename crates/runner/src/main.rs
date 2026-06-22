@@ -4,7 +4,7 @@ use std::process::Command as StdCommand;
 use std::sync::Arc;
 use std::time::Duration;
 use taskforge_runner_core::{
-    AgentHost, AuthStore, BindingDto, ClaimedSession, LocalBindingStore, LocalSpool,
+    AcpAgentHost, AgentHost, AuthStore, BindingDto, ClaimedSession, LocalBindingStore, LocalSpool,
     PlatformClient, RunnerConfig, RunnerError, RunnerRegistration, SessionEvent, StubAgentHost,
     VERSION,
 };
@@ -113,6 +113,7 @@ fn bindings_for(config: &RunnerConfig) -> Vec<BindingDto> {
         .map(|b| BindingDto {
             repository_id: b.repository_id.clone(),
             local_path: b.local_path.clone(),
+            status: "bound".to_string(),
         })
         .collect()
 }
@@ -214,16 +215,17 @@ async fn doctor() -> Result<()> {
 
     // Agent command exists (or default stub)
     if let Some(cmd) = &config.agent_command {
+        let program = cmd.split_whitespace().next().unwrap_or(cmd);
         match StdCommand::new("sh")
             .arg("-c")
-            .arg(format!("command -v {}", cmd))
+            .arg(format!("command -v {}", program))
             .output()
         {
             Ok(output) if output.status.success() => {
                 let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 println!("Agent command:    OK ({})", path);
             }
-            _ => println!("Agent command:    MISSING ({})", cmd),
+            _ => println!("Agent command:    MISSING ({})", program),
         }
     } else {
         println!("Agent command:    OK (using stub agent)");
@@ -323,15 +325,56 @@ async fn start() -> Result<()> {
     Ok(())
 }
 
+enum RunnerHost {
+    Stub(StubAgentHost),
+    Acp(AcpAgentHost),
+}
+
+impl AgentHost for RunnerHost {
+    async fn run(
+        &self,
+        session: ClaimedSession,
+        event_tx: mpsc::Sender<SessionEvent>,
+    ) -> Result<(), RunnerError> {
+        match self {
+            RunnerHost::Stub(h) => h.run(session, event_tx).await,
+            RunnerHost::Acp(h) => h.run(session, event_tx).await,
+        }
+    }
+}
+
+fn host_for_config(config: &RunnerConfig) -> RunnerHost {
+    match config.agent_command.as_deref() {
+        None => RunnerHost::Stub(StubAgentHost::new()),
+        Some(cmd) if cmd.eq_ignore_ascii_case("stub") => RunnerHost::Stub(StubAgentHost::new()),
+        Some(cmd) => {
+            let mut tokens = cmd.split_whitespace();
+            let program = tokens
+                .next()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| cmd.to_string());
+            let mut args: Vec<String> = tokens.map(|s| s.to_string()).collect();
+            if !args.iter().any(|a| a.eq_ignore_ascii_case("acp")) {
+                args.push("acp".to_string());
+            }
+            RunnerHost::Acp(AcpAgentHost::new(
+                program,
+                args,
+                config.local_bindings.clone(),
+            ))
+        }
+    }
+}
+
 async fn run_session(
     client: Arc<PlatformClient>,
     spool: Arc<LocalSpool>,
-    _config: RunnerConfig,
+    config: RunnerConfig,
     runner_id: &str,
     session: ClaimedSession,
 ) -> Result<()> {
     info!("executing session {}", session.session_id);
-    let host = StubAgentHost::new();
+    let host = host_for_config(&config);
     let (tx, mut rx) = mpsc::channel::<SessionEvent>(128);
 
     let session_id = session.session_id.clone();
@@ -373,20 +416,22 @@ async fn run_session(
     // Wait for the uploader task to finish; tx is dropped when host.run returns.
     event_uploader.await.context("event uploader panicked")?;
 
-    // Upload a patch artifact.
-    let patch = sample_patch();
-    if let Err(e) = upload_client
-        .upload_artifact(
-            runner_id,
-            &upload_session_id,
-            "patch",
-            patch.into_bytes(),
-            &artifact_upload_url,
-        )
-        .await
-    {
-        warn!("artifact upload failed: {}", e);
-        // v0.1 stub: do not spool artifact failures.
+    // Upload a patch artifact when the claim response provides a URL.
+    if !artifact_upload_url.is_empty() {
+        let patch = sample_patch();
+        if let Err(e) = upload_client
+            .upload_artifact(
+                runner_id,
+                &upload_session_id,
+                "patch",
+                patch.into_bytes(),
+                &artifact_upload_url,
+            )
+            .await
+        {
+            warn!("artifact upload failed: {}", e);
+            // v0.1 stub: do not spool artifact failures.
+        }
     }
 
     // After uploading, try to drain any spooled events.
