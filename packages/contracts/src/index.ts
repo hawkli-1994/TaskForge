@@ -131,6 +131,19 @@ export const HumanInputEventInput = z.object({
 });
 export type HumanInputEventInput = z.infer<typeof HumanInputEventInput>;
 
+export const RegisterInput = z.object({
+  email: z.string().email().min(1).max(200),
+  password: z.string().min(8).max(100),
+  name: z.string().min(1).max(100),
+});
+export type RegisterInput = z.infer<typeof RegisterInput>;
+
+export const LoginInput = z.object({
+  email: z.string().email().min(1).max(200),
+  password: z.string().min(1).max(100),
+});
+export type LoginInput = z.infer<typeof LoginInput>;
+
 export const RunnerRegisterInput = z.object({
   name: z.string().min(1).max(200),
   projectId: z.string().cuid2().optional(),

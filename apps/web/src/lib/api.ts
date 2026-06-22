@@ -1,5 +1,4 @@
-const USER_ID = "dev-user";
-const PROJECT_ROLE = "maintainer";
+import { cookies } from "next/headers";
 
 export async function apiFetch<T = unknown>(
   path: string,
@@ -12,8 +11,18 @@ export async function apiFetch<T = unknown>(
   const url = `${base}${path}`;
 
   const headers = new Headers(options?.headers);
-  headers.set("x-taskforge-user-id", USER_ID);
-  headers.set("x-taskforge-project-role", PROJECT_ROLE);
+  if (isServer) {
+    try {
+      const cookieStore = cookies();
+      const cookie = cookieStore.toString();
+      if (cookie) {
+        headers.set("Cookie", cookie);
+      }
+    } catch {
+      // Not in a request context (e.g. static generation)
+    }
+  }
+
   if (options?.body && !headers.has("content-type")) {
     headers.set("content-type", "application/json");
   }
@@ -21,6 +30,7 @@ export async function apiFetch<T = unknown>(
   const res = await fetch(url, {
     ...options,
     headers,
+    credentials: "include",
     cache: options?.cache ?? "no-store",
   });
 

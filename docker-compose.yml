@@ -55,6 +55,9 @@ services:
       PORT: "3001"
       DATABASE_URL: ${DATABASE_URL:-postgresql://taskforge:taskforge@postgres:5432/taskforge}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      COOKIE_SECRET: ${COOKIE_SECRET:-change-me-in-production}
+      TASKFORGE_DEV_AUTH: ${TASKFORGE_DEV_AUTH:-false}
       GITLAB_API_TOKEN: ${GITLAB_API_TOKEN:-}
       GITLAB_BASE_URL: ${GITLAB_BASE_URL:-}
     depends_on:

@@ -4,7 +4,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { BullModule } from "@nestjs/bullmq";
 import { PrismaModule } from "./common/prisma.module";
 import { AuthModule } from "./auth/auth.module";
-import { DevAuthGuard } from "./auth/auth.guard";
+import { JwtAuthGuard } from "./auth/jwt-auth.guard";
 import { UsersModule } from "./users/users.module";
 import { TeamsModule } from "./teams/teams.module";
 import { ProjectsModule } from "./projects/projects.module";
@@ -18,7 +18,7 @@ import { RepositoriesModule } from "./repositories/repositories.module";
 
 const globalGuard: Provider = {
   provide: APP_GUARD,
-  useClass: DevAuthGuard,
+  useClass: JwtAuthGuard,
 };
 
 const bullEnabled = process.env.TASKFORGE_DISABLE_BULLMQ !== "true";
