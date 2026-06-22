@@ -21,6 +21,11 @@ export class JwtAuthGuard extends AuthGuard("jwt") implements CanActivate {
       return true;
     }
 
+    // Runner-facing endpoints authenticate with the runner profile token.
+    if (this.isRunnerEndpoint(request.url)) {
+      return this.authenticateRunner(request);
+    }
+
     // Try JWT first (cookie or Authorization header).
     const jwtResult = await this.superCanActivate(context).catch(() => false);
     if (jwtResult && request.user) {
@@ -52,6 +57,46 @@ export class JwtAuthGuard extends AuthGuard("jwt") implements CanActivate {
     }
 
     throw new UnauthorizedException("Authentication required");
+  }
+
+  private isRunnerEndpoint(url: string): boolean {
+    // POST /api/runner/heartbeat
+    if (url === "/api/runner/heartbeat") return true;
+    // POST /api/runner/sessions/claim
+    if (url === "/api/runner/sessions/claim") return true;
+    // POST /api/runner/sessions/:id/events
+    // POST /api/runner/sessions/:id/artifacts
+    if (
+      /^\/api\/runner\/sessions\/[^/]+\/(events|artifacts)$/.test(
+        url.split("?")[0],
+      )
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  private async authenticateRunner(request: any): Promise<boolean> {
+    const runnerId = request.headers["x-taskforge-runner-id"];
+    const auth = request.headers["authorization"];
+    if (
+      typeof runnerId !== "string" ||
+      typeof auth !== "string" ||
+      !auth.startsWith("Bearer ")
+    ) {
+      throw new UnauthorizedException("Missing runner credentials");
+    }
+
+    const token = auth.slice("Bearer ".length);
+    const runner = await this.prisma.runnerProfile.findUnique({
+      where: { id: runnerId },
+    });
+    if (!runner || runner.token !== token) {
+      throw new UnauthorizedException("Invalid runner token");
+    }
+
+    request.user = { id: runner.ownerId, runnerId: runner.id };
+    return true;
   }
 
   private superCanActivate(context: ExecutionContext): Promise<boolean> {

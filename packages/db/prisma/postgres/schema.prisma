@@ -208,6 +208,7 @@ model RunnerProfile {
   projectId        String?
   project          Project?  @relation(name: "ProjectRunnerProfiles", fields: [projectId], references: [id], onDelete: SetNull)
   name             String
+  token            String?   @unique
   status           String
   scope            String    @default("personal")
   adapter          String?

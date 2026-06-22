@@ -60,6 +60,7 @@ export class RunnerService {
         ownerId: actorId,
         projectId: input.projectId ?? null,
         name: input.name,
+        token,
         adapter: input.adapter ?? null,
         status: "online",
         scope: input.scope ?? "personal",
