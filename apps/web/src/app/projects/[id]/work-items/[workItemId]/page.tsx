@@ -1,8 +1,9 @@
 import { apiFetch } from "@/lib/api";
-import { Session, WorkItem } from "@/lib/types";
+import { Project, Session, WorkItem } from "@/lib/types";
 import { StatusSelect } from "@/components/status-select";
 import { StartSessionForm } from "@/components/start-session-form";
 import { WorkItemSessions } from "@/components/work-item-sessions";
+import { AppBreadcrumb } from "@/components/app-breadcrumb";
 
 export default async function WorkItemPage({
   params,
@@ -10,12 +11,14 @@ export default async function WorkItemPage({
   params: { id: string; workItemId: string };
 }) {
   let workItem: WorkItem | null = null;
+  let project: Project | null = null;
   let sessions: Session[] = [];
   let error: string | null = null;
 
   try {
-    [workItem, sessions] = await Promise.all([
+    [workItem, project, sessions] = await Promise.all([
       apiFetch<WorkItem>(`/api/work-items/${params.workItemId}`),
+      apiFetch<Project>(`/api/projects/${params.id}`),
       apiFetch<Session[]>(`/api/work-items/${params.workItemId}/sessions`),
     ]);
   } catch (e) {
@@ -37,7 +40,15 @@ export default async function WorkItemPage({
   const context = workItem.contextBundle;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div>
+      <AppBreadcrumb
+        segments={[
+          { label: "Home", href: "/" },
+          { label: project?.name ?? "Project", href: `/projects/${params.id}/board` },
+          { label: workItem.title },
+        ]}
+      />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2 space-y-6">
         <div className="bg-white p-5 rounded-lg shadow border border-gray-200">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -142,6 +153,7 @@ export default async function WorkItemPage({
         <StartSessionForm projectId={params.id} workItemId={workItem.id} />
         <WorkItemSessions sessions={sessions} />
       </aside>
+      </div>
     </div>
   );
 }

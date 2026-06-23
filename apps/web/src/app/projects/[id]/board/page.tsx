@@ -11,6 +11,7 @@ import { WorkItemCard } from "@/components/work-item-card";
 import { CreateWorkItemForm } from "@/components/create-work-item-form";
 import { RepositoryList } from "@/components/repository-list";
 import { RunnerStatusPanel } from "@/components/runner-status-panel";
+import { AppBreadcrumb } from "@/components/app-breadcrumb";
 
 const columns: WorkItemStatus[] = [
   "backlog",
@@ -74,6 +75,12 @@ export default async function BoardPage({
 
   return (
     <div>
+      <AppBreadcrumb
+        segments={[
+          { label: "Home", href: "/" },
+          { label: board.project.name },
+        ]}
+      />
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
