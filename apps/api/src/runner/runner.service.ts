@@ -26,6 +26,7 @@ import {
 } from "@taskforge/domain";
 import { PrismaService } from "../common/prisma.service";
 import { RedisService } from "../common/redis.service";
+import { renderPrompt } from "../common/prompt.util";
 import { AuditService } from "../audit/audit.service";
 import { OutboxService } from "../outbox/outbox.service";
 import { ProjectsService } from "../projects/projects.service";
@@ -322,20 +323,33 @@ export class RunnerService {
         },
       });
 
-      const agentInfo = (session.acpAgentInfoJson ?? {}) as Record<string, string | null>;
+      const agentInfo = (session.acpAgentInfoJson ?? {}) as Record<
+        string,
+        unknown
+      >;
+
+      let promptText = agentInfo.prompt as string | undefined;
+      if (!promptText) {
+        const promptVersion = await tx.promptVersion.findFirst({
+          where: { mode: session.mode },
+          orderBy: { version: "desc" },
+        });
+        promptText = renderPrompt(
+          promptVersion?.template ?? "",
+          session.workItem,
+          session.contextBundle,
+        );
+      }
+
       const acp = {
         sessionId: session.id,
         workItemId: session.workItemId,
         projectId: session.workItem.projectId,
         repositoryId: session.workItem.repositoryId ?? null,
         mode: session.mode,
-        agentName: agentInfo.agentName ?? null,
+        agentName: (agentInfo.agentName as string | null) ?? null,
         workingDirectory: session.workingDirectory ?? null,
-        content: `ACP prompt for ${session.mode}: ${
-          session.contextBundle?.promptInput ??
-          session.workItem.description ??
-          ""
-        }`,
+        content: promptText,
         nextSeq: seq + 1,
       };
 

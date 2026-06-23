@@ -7,6 +7,7 @@ import {
   resolvePullRequestForSession,
 } from "@taskforge/pi-agent";
 import { PrismaService } from "../common/prisma.service";
+import { renderPrompt } from "../common/prompt.util";
 
 @Injectable()
 export class OutboxService {
@@ -84,18 +85,27 @@ export class OutboxService {
 
     const bundle =
       session.contextBundle || session.workItem.contextBundles[0] || null;
-    const prompt = this.renderPrompt(
+    const prompt = renderPrompt(
       latestPrompt?.template ?? "",
       session.workItem,
       bundle,
     );
+
+    const existingInfo = (session.acpAgentInfoJson ?? {}) as Record<
+      string,
+      unknown
+    >;
+    const acpAgentInfoJson = {
+      ...existingInfo,
+      prompt,
+    };
 
     const nextStatus = session.runnerId ? "dispatching" : "queued";
     await this.prisma.agentSession.update({
       where: { id: sessionId },
       data: {
         status: nextStatus,
-        acpAgentInfoJson: { prompt } as Prisma.InputJsonValue,
+        acpAgentInfoJson: acpAgentInfoJson as Prisma.InputJsonValue,
       },
     });
 
@@ -106,36 +116,5 @@ export class OutboxService {
       // Status is already set to dispatching, so synchronous enqueue is not needed.
     }
   }
-
-  private renderPrompt(
-    template: string,
-    workItem: {
-      id: string;
-      projectId: string;
-      title: string;
-      description: string | null;
-      acceptanceCriteria: string | null;
-    },
-    bundle?: {
-      summary: string | null;
-      goal: string | null;
-      acceptanceCriteria: string | null;
-      promptInput: string | null;
-    } | null,
-  ) {
-    const goal = bundle?.goal ?? workItem.title ?? "";
-    const acceptanceCriteria =
-      bundle?.acceptanceCriteria ?? workItem.acceptanceCriteria ?? "";
-    const context = bundle?.promptInput ?? "";
-
-    return template
-      .replace(/{{workItemId}}/g, workItem.id)
-      .replace(/{{projectId}}/g, workItem.projectId)
-      .replace(/{{goal}}/g, goal)
-      .replace(/{{acceptanceCriteria}}/g, acceptanceCriteria)
-      .replace(/{{context}}/g, context)
-      .replace(/{{title}}/g, workItem.title)
-      .replace(/{{description}}/g, workItem.description ?? "")
-      .replace(/{{summary}}/g, bundle?.summary ?? workItem.title);
-  }
 }
+

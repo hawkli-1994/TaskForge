@@ -110,6 +110,15 @@ export function createOutboxProcessor(
 
         const nextStatus = session.runnerId ? "dispatching" : "queued";
 
+        const existingInfo = (session.acpAgentInfoJson ?? {}) as Record<
+          string,
+          unknown
+        >;
+        const acpAgentInfoJson = {
+          ...existingInfo,
+          prompt: rendered,
+        };
+
         const lastEvent = await prisma.sessionEvent.findFirst({
           where: { sessionId: session.id },
           orderBy: { seq: "desc" },
@@ -120,7 +129,10 @@ export function createOutboxProcessor(
         await prisma.$transaction([
           prisma.agentSession.update({
             where: { id: session.id },
-            data: { status: nextStatus },
+            data: {
+              status: nextStatus,
+              acpAgentInfoJson: acpAgentInfoJson as any,
+            },
           }),
           prisma.sessionEvent.create({
             data: {

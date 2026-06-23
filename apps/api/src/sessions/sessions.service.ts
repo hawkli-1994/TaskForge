@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import {
   CreateSessionInput,
   HumanInputEventInput,
@@ -21,6 +22,7 @@ import {
   workItemStatusFromSessionResult,
 } from "@taskforge/domain";
 import { PrismaService } from "../common/prisma.service";
+import { renderPrompt } from "../common/prompt.util";
 import { AuditService } from "../audit/audit.service";
 import { OutboxService } from "../outbox/outbox.service";
 import { ProjectsService } from "../projects/projects.service";
@@ -367,22 +369,51 @@ export class SessionsService {
         seq = nextEventSeq(seq);
       }
 
+      const promptVersion = await tx.promptVersion.findFirst({
+        where: { mode: session.mode },
+        orderBy: { version: "desc" },
+      });
+      const contextBundle = session.contextBundleId
+        ? await tx.contextBundle.findUnique({
+            where: { id: session.contextBundleId },
+          })
+        : null;
+      let renderedPrompt = renderPrompt(
+        promptVersion?.template ?? "",
+        session.workItem,
+        contextBundle,
+      );
+      if (input.instruction?.trim()) {
+        renderedPrompt += `\n\nAdditional instruction from user: ${input.instruction.trim()}`;
+      }
+
+      const existingInfo = (session.acpAgentInfoJson ?? {}) as Record<
+        string,
+        unknown
+      >;
+      const acpAgentInfoJson = {
+        ...existingInfo,
+        prompt: renderedPrompt,
+      };
+
       await tx.sessionEvent.create({
         data: {
           sessionId: id,
           seq,
           type: "runner.dispatched",
-          payload: { reason: "resume", actorId },
+          payload: { reason: "resume", actorId, renderedPrompt },
         },
       });
 
       const updateData: {
         status: SessionStatus;
         runnerId: null;
+        acpAgentInfoJson: Prisma.InputJsonValue;
         workingDirectory?: string;
       } = {
         status: "dispatching",
         runnerId: null,
+        acpAgentInfoJson: acpAgentInfoJson as Prisma.InputJsonValue,
       };
       if (input.workingDirectory) {
         updateData.workingDirectory = input.workingDirectory;
