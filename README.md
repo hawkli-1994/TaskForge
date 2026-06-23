@@ -51,7 +51,14 @@ docs/
 
 ## Quick Start
 
-### 方式一：Docker Compose 一键启动（推荐）
+TaskForge 由两部分组成：
+
+1. **控制平面**：Web UI + API + Worker + 数据库（负责任务、会话、事件、上下文管理）。
+2. **执行端**：Rust Runner CLI（必须安装在你希望 Agent 实际执行代码的那台机器上）。
+
+### 启动控制平面
+
+#### 方式一：Docker Compose 一键启动（推荐）
 
 需要 Docker + Docker Compose。
 
@@ -86,7 +93,7 @@ docker compose up -d
 docker compose down
 ```
 
-### 方式二：本地源码开发
+#### 方式二：本地源码开发
 
 需要 Node.js >= 22、pnpm >= 10、Rust >= 1.89。
 
@@ -110,7 +117,9 @@ pnpm dev
 - Web UI: http://localhost:3000
 - API: http://localhost:3001/api
 
-### 方式三：Rust Runner CLI 直连
+### 安装并启动 Runner CLI（必需）
+
+控制平面本身不执行代码。无论你把控制平面部署在本地、Docker 还是云端，都必须在你希望 Agent 干活的机器上安装并启动 Rust Runner CLI。
 
 GitHub Actions 会自动为 Linux、macOS、Windows 构建 Release 二进制文件。
 

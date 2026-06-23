@@ -51,7 +51,14 @@ docs/
 
 ## Quick Start
 
-### Option 1: Docker Compose one-click (recommended)
+TaskForge has two parts:
+
+1. **Control plane**: Web UI + API + Worker + database (manages tasks, sessions, events, and context).
+2. **Execution side**: Rust Runner CLI (must be installed on the machine where you want the Agent to actually run code).
+
+### Start the control plane
+
+#### Option 1: Docker Compose one-click (recommended)
 
 Requires Docker + Docker Compose.
 
@@ -86,7 +93,7 @@ Stop:
 docker compose down
 ```
 
-### Option 2: Local source development
+#### Option 2: Local source development
 
 Requires Node.js >= 22, pnpm >= 10, Rust >= 1.89.
 
@@ -110,7 +117,9 @@ pnpm dev
 - Web UI: http://localhost:3000
 - API: http://localhost:3001/api
 
-### Option 3: Rust Runner CLI direct connection
+### Install and start the Runner CLI (required)
+
+The control plane does not execute code by itself. Whether you run the control plane locally, in Docker, or in the cloud, you must install and start the Rust Runner CLI on the machine where the Agent will do the work.
 
 GitHub Actions automatically builds release binaries for Linux, macOS, and Windows.
 
