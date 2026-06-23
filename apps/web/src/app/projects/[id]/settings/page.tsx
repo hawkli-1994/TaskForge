@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/api";
 import { Project, Repository } from "@/lib/types";
 import { RepositoryConnectForm } from "@/components/repository-connect-form";
 import { RunnerSettings } from "@/components/runner-settings";
+import { AppBreadcrumb } from "@/components/app-breadcrumb";
 import Link from "next/link";
 
 async function getProject(id: string): Promise<Project | null> {
@@ -45,6 +46,13 @@ export default async function SettingsPage({
 
   return (
     <div className="space-y-8">
+      <AppBreadcrumb
+        segments={[
+          { label: "Home", href: "/" },
+          { label: project.name, href: `/projects/${params.id}/board` },
+          { label: "Settings" },
+        ]}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
