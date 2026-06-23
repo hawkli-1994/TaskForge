@@ -66,11 +66,14 @@ Requires Docker + Docker Compose.
 git clone https://github.com/hawkli-1994/TaskForge.git
 cd TaskForge
 
-# Optional: configure environment variables
+# Optional: copy and edit environment variables; docker compose loads .env automatically
 # cp .env.example .env
+# vi .env
 
 docker compose up -d
 ```
+
+If you want automatic GitHub PR association or LLM-based PR detection, fill in `GITHUB_TOKEN`, `LLM_PROVIDER`, `LLM_API_KEY`, etc. in `.env`.
 
 Services:
 

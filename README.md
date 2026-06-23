@@ -66,11 +66,14 @@ TaskForge 由两部分组成：
 git clone https://github.com/hawkli-1994/TaskForge.git
 cd TaskForge
 
-# 可选：配置环境变量
+# 可选：复制并编辑环境变量，docker compose 会自动加载 .env
 # cp .env.example .env
+# vi .env
 
 docker compose up -d
 ```
+
+如果你需要 GitHub PR 自动关联或 LLM 检测 PR，把 `.env` 里的 `GITHUB_TOKEN`、`LLM_PROVIDER`、`LLM_API_KEY` 等填上即可。
 
 服务地址：
 
