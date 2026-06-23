@@ -6,6 +6,7 @@ import {
   GitLabPullRequestProvider,
   parseGitHubOwnerRepo,
   parseGitLabProjectPath,
+  type CreatePullRequestInput,
   type PullRequestRef,
   type RepositoryProviderAuth,
 } from "./providers";
@@ -31,7 +32,7 @@ export async function resolvePullRequestForSession(
   const session = await prisma.agentSession.findUnique({
     where: { id: sessionId },
     include: {
-      workItem: { include: { repository: true } },
+      workItem: { include: { repository: true, project: { include: { repositories: true } } } },
       events: { orderBy: { seq: "asc" } },
     },
   });
@@ -40,9 +41,14 @@ export async function resolvePullRequestForSession(
     throw new Error(`Session ${sessionId} not found`);
   }
 
-  const repository = session.workItem.repository;
+  // Fallback to the first repository registered on the project if the work
+  // item itself was not explicitly linked to a repository.
+  const repository =
+    session.workItem.repository ?? session.workItem.project.repositories[0] ?? null;
   if (!repository) {
-    console.log(`[pi-agent] No repository linked to work item ${session.workItem.id}; skipping PR resolution`);
+    console.log(
+      `[pi-agent] No repository linked to work item ${session.workItem.id} or its project; skipping PR resolution`,
+    );
     return { created: false };
   }
 
@@ -97,7 +103,8 @@ export async function resolvePullRequestForSession(
     return { created: true, pullRequestId: pr.id };
   }
 
-  // Otherwise, try to create the PR ourselves if the agent pushed a branch.
+  // Otherwise, try to discover an existing PR for the branch the agent likely
+  // pushed. This works even when no LLM is configured.
   const headBranch =
     detected.headBranch ?? `taskforge/${session.workItem.id}`;
   const baseBranch =
@@ -113,15 +120,28 @@ export async function resolvePullRequestForSession(
 
   let prRef: PullRequestRef | undefined;
   try {
-    prRef = await createProviderPullRequest(repository.provider, repository.url, config, {
-      title: `TaskForge: ${session.workItem.title}`,
-      body: buildPrBody(session.workItemId, session.id),
-      headBranch,
-      baseBranch,
-    });
+    prRef =
+      (await findProviderPullRequestByBranch(repository.provider, repository.url, config, {
+        headBranch,
+        baseBranch,
+      })) ?? undefined;
   } catch (err) {
-    console.error(`[pi-agent] Failed to create PR:`, err);
-    return { created: false };
+    console.error(`[pi-agent] Failed to find existing PR:`, err);
+  }
+
+  // If we can't find an existing PR, try to create one ourselves.
+  if (!prRef) {
+    try {
+      prRef = await createProviderPullRequest(repository.provider, repository.url, config, {
+        title: `TaskForge: ${session.workItem.title}`,
+        body: buildPrBody(session.workItemId, session.id),
+        headBranch,
+        baseBranch,
+      });
+    } catch (err) {
+      console.error(`[pi-agent] Failed to create PR:`, err);
+      return { created: false };
+    }
   }
 
   const pr = await prisma.pullRequest.create({
@@ -158,32 +178,73 @@ async function createProviderPullRequest(
   config: PiAgentConfig,
   args: CreatePrArgs,
 ): Promise<PullRequestRef> {
+  const baseArgs = buildProviderArgs(provider, url, args);
   switch (provider) {
     case "github": {
       if (!config.github?.token) {
         throw new Error("GitHub token not configured");
       }
-      const { owner, repo } = parseGitHubOwnerRepo(url);
       const auth: RepositoryProviderAuth = { token: config.github.token };
-      return new GitHubPullRequestProvider().createPullRequest(auth, {
-        owner,
-        repo,
-        ...args,
-      });
+      return new GitHubPullRequestProvider().createPullRequest(auth, baseArgs as CreatePullRequestInput);
     }
     case "gitlab": {
       if (!config.gitlab?.token) {
         throw new Error("GitLab token not configured");
       }
-      const projectPath = parseGitLabProjectPath(url);
       const auth: RepositoryProviderAuth = {
         token: config.gitlab.token,
         baseUrl: config.gitlab.baseUrl,
       };
-      return new GitLabPullRequestProvider().createPullRequest(auth, {
-        projectPath,
-        ...args,
-      });
+      return new GitLabPullRequestProvider().createPullRequest(auth, baseArgs as CreatePullRequestInput);
+    }
+    default:
+      throw new Error(`Unsupported provider: ${provider}`);
+  }
+}
+
+async function findProviderPullRequestByBranch(
+  provider: string,
+  url: string,
+  config: PiAgentConfig,
+  args: Omit<CreatePrArgs, "title" | "body">,
+): Promise<PullRequestRef | null> {
+  const baseArgs = buildProviderArgs(provider, url, args);
+  switch (provider) {
+    case "github": {
+      if (!config.github?.token) {
+        throw new Error("GitHub token not configured");
+      }
+      const auth: RepositoryProviderAuth = { token: config.github.token };
+      return new GitHubPullRequestProvider().findPullRequestByBranch(auth, baseArgs);
+    }
+    case "gitlab": {
+      if (!config.gitlab?.token) {
+        throw new Error("GitLab token not configured");
+      }
+      const auth: RepositoryProviderAuth = {
+        token: config.gitlab.token,
+        baseUrl: config.gitlab.baseUrl,
+      };
+      return new GitLabPullRequestProvider().findPullRequestByBranch(auth, baseArgs);
+    }
+    default:
+      throw new Error(`Unsupported provider: ${provider}`);
+  }
+}
+
+function buildProviderArgs(
+  provider: string,
+  url: string,
+  args: Omit<CreatePrArgs, "title" | "body"> | CreatePrArgs,
+): CreatePullRequestInput {
+  switch (provider) {
+    case "github": {
+      const { owner, repo } = parseGitHubOwnerRepo(url);
+      return { owner, repo, title: (args as CreatePrArgs).title ?? "", body: (args as CreatePrArgs).body ?? "", ...args };
+    }
+    case "gitlab": {
+      const projectPath = parseGitLabProjectPath(url);
+      return { projectPath, title: (args as CreatePrArgs).title ?? "", body: (args as CreatePrArgs).body ?? "", ...args };
     }
     default:
       throw new Error(`Unsupported provider: ${provider}`);

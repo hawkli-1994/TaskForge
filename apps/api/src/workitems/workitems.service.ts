@@ -41,6 +41,7 @@ export class WorkItemsService {
         project: true,
         activeSession: { include: { runner: true } },
         contextBundles: { orderBy: { version: "desc" }, take: 1 },
+        pullRequests: { orderBy: { createdAt: "desc" } },
       },
     });
     if (!workItem) {

@@ -28,6 +28,10 @@ export interface PullRequestProvider {
     auth: RepositoryProviderAuth,
     input: CreatePullRequestInput,
   ): Promise<PullRequestRef>;
+  findPullRequestByBranch(
+    auth: RepositoryProviderAuth,
+    input: Omit<CreatePullRequestInput, "title" | "body">,
+  ): Promise<PullRequestRef | null>;
 }
 
 export class GitHubPullRequestProvider implements PullRequestProvider {
@@ -79,6 +83,57 @@ export class GitHubPullRequestProvider implements PullRequestProvider {
       state: data.state,
       headBranch: data.head.ref,
       baseBranch: data.base.ref,
+    };
+  }
+
+  async findPullRequestByBranch(
+    auth: RepositoryProviderAuth,
+    input: Omit<CreatePullRequestInput, "title" | "body">,
+  ): Promise<PullRequestRef | null> {
+    const { owner, repo } = { owner: input.owner ?? "", repo: input.repo ?? "" };
+    if (!owner || !repo) {
+      throw new Error("GitHub findPullRequestByBranch requires owner and repo");
+    }
+    const head = `${owner}:${input.headBranch}`;
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls?state=all&head=${encodeURIComponent(head)}&per_page=1`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${auth.token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(
+        `GitHub API error: ${response.status} ${response.statusText} - ${body}`,
+      );
+    }
+
+    const data = (await response.json()) as Array<{
+      number: number;
+      id: number;
+      title: string;
+      html_url: string;
+      state: string;
+      head: { ref: string };
+      base: { ref: string };
+    }>;
+
+    const first = data[0];
+    if (!first) return null;
+
+    return {
+      number: first.number,
+      externalId: String(first.id),
+      title: first.title,
+      url: first.html_url,
+      state: first.state,
+      headBranch: first.head.ref,
+      baseBranch: first.base.ref,
     };
   }
 }
@@ -136,6 +191,56 @@ export class GitLabPullRequestProvider implements PullRequestProvider {
       state: data.state,
       headBranch: data.source_branch,
       baseBranch: data.target_branch,
+    };
+  }
+
+  async findPullRequestByBranch(
+    auth: RepositoryProviderAuth,
+    input: Omit<CreatePullRequestInput, "title" | "body">,
+  ): Promise<PullRequestRef | null> {
+    const projectPath = input.projectPath;
+    if (!projectPath) {
+      throw new Error("GitLab findPullRequestByBranch requires projectPath");
+    }
+    const baseUrl = auth.baseUrl ?? "https://gitlab.com";
+    const encodedPath = encodeURIComponent(projectPath);
+    const response = await fetch(
+      `${baseUrl}/api/v4/projects/${encodedPath}/merge_requests?source_branch=${encodeURIComponent(input.headBranch)}&state=all&per_page=1`,
+      {
+        headers: {
+          "PRIVATE-TOKEN": auth.token,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(
+        `GitLab API error: ${response.status} ${response.statusText} - ${body}`,
+      );
+    }
+
+    const data = (await response.json()) as Array<{
+      iid: number;
+      id: number;
+      title: string;
+      web_url: string;
+      state: string;
+      source_branch: string;
+      target_branch: string;
+    }>;
+
+    const first = data[0];
+    if (!first) return null;
+
+    return {
+      number: first.iid,
+      externalId: String(first.id),
+      title: first.title,
+      url: first.web_url,
+      state: first.state,
+      headBranch: first.source_branch,
+      baseBranch: first.target_branch,
     };
   }
 }

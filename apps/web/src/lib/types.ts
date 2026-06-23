@@ -46,6 +46,25 @@ export interface ContextBundle {
   createdAt?: string;
 }
 
+export interface PullRequest {
+  id: string;
+  workItemId: string;
+  sessionId?: string | null;
+  repositoryId: string;
+  provider: string;
+  number?: number | null;
+  externalId?: string | null;
+  title?: string | null;
+  headBranch: string;
+  baseBranch: string;
+  url?: string | null;
+  commitSha?: string | null;
+  state: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WorkItem {
   id: string;
   projectId: string;
@@ -59,6 +78,7 @@ export interface WorkItem {
   assignee?: Assignee | null;
   activeSession?: ActiveSession | null;
   contextBundle?: ContextBundle | null;
+  pullRequests?: PullRequest[];
 }
 
 export interface ProjectBoard {

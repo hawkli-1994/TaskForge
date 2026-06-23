@@ -1,8 +1,9 @@
 import { apiFetch } from "@/lib/api";
-import { Session, WorkItem } from "@/lib/types";
+import { PullRequest, Session, WorkItem } from "@/lib/types";
 import { StatusSelect } from "@/components/status-select";
 import { StartSessionForm } from "@/components/start-session-form";
 import { WorkItemSessions } from "@/components/work-item-sessions";
+import { GitPullRequestIcon } from "lucide-react";
 
 export default async function WorkItemPage({
   params,
@@ -141,7 +142,53 @@ export default async function WorkItemPage({
       <aside className="space-y-6">
         <StartSessionForm projectId={params.id} workItemId={workItem.id} />
         <WorkItemSessions sessions={sessions} />
+        <PullRequestList pullRequests={workItem.pullRequests ?? []} />
       </aside>
     </div>
+  );
+}
+
+function PullRequestList({ pullRequests }: { pullRequests: PullRequest[] }) {
+  return (
+    <section className="bg-white p-5 rounded-lg shadow border border-gray-200">
+      <h2 className="text-md font-semibold text-gray-900 flex items-center gap-2">
+        <GitPullRequestIcon className="size-4" />
+        Pull Requests
+      </h2>
+      {pullRequests.length === 0 ? (
+        <p className="mt-2 text-sm text-gray-500">No pull requests linked yet.</p>
+      ) : (
+        <ul className="mt-3 space-y-3">
+          {pullRequests.map((pr) => (
+            <li key={pr.id} className="text-sm">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 capitalize">
+                  {pr.state}
+                </span>
+                {pr.url ? (
+                  <a
+                    href={pr.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-blue-600 hover:underline truncate"
+                    title={pr.title ?? pr.headBranch}
+                  >
+                    {pr.title ?? pr.headBranch}
+                  </a>
+                ) : (
+                  <span className="font-medium text-gray-900 truncate">
+                    {pr.title ?? pr.headBranch}
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 text-xs text-gray-500">
+                {pr.provider} · {pr.headBranch} → {pr.baseBranch}
+                {pr.number ? ` · #${pr.number}` : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
