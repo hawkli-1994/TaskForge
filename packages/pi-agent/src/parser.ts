@@ -27,8 +27,9 @@ Output ONLY a single JSON object with these fields:
 Rules:
 1. Do not wrap the JSON in markdown fences.
 2. Use null for unknown fields.
-3. If the agent only pushed a branch (e.g., "git push origin taskforge/...") and did not create a PR, set createdPr=false and provide headBranch.
-4. If the agent explicitly says it opened a PR and provides a URL or number, set createdPr=true.`;
+3. If the agent explicitly says it opened a PR and provides a URL or number, set createdPr=true.
+4. If the agent only pushed a branch (e.g., "git push origin taskforge/...") and did not create a PR, set createdPr=false and provide headBranch. The system will then look up any existing PR for that branch on the remote provider.
+5. If the agent reports a branch but you cannot tell whether a PR exists, still provide headBranch so the system can check.`;
 
 export async function detectPrFromEvents(
   client: LlmClient,
