@@ -45,17 +45,29 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: strip target/${{ matrix.target }}/release/${{ matrix.binary }}
 
+      - name: Prepare release asset name
+        shell: bash
+        run: |
+          src="target/${{ matrix.target }}/release/${{ matrix.binary }}"
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            dst="target/${{ matrix.target }}/release/taskforge-runner-${{ matrix.target }}.exe"
+          else
+            dst="target/${{ matrix.target }}/release/taskforge-runner-${{ matrix.target }}"
+          fi
+          cp "$src" "$dst"
+          echo "asset=$dst" >> "$GITHUB_ENV"
+
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: taskforge-runner-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/${{ matrix.binary }}
+          path: ${{ env.asset }}
           if-no-files-found: error
 
       - name: Upload release asset
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: target/${{ matrix.target }}/release/${{ matrix.binary }}
+          files: ${{ env.asset }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
