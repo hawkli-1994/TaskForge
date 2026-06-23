@@ -1,5 +1,7 @@
+import Link from "next/link";
+import { ChevronRightIcon } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { Session, SessionEvent } from "@/lib/types";
+import { Project, Session, SessionEvent, WorkItem } from "@/lib/types";
 import { SessionGenerativeUI } from "@/components/session-generative-ui";
 import { SessionResume } from "@/components/session-resume";
 import { Status, StatusIndicator, StatusLabel } from "@/components/ui/status";
@@ -60,9 +62,56 @@ export default async function SessionPage({
 
   const agentName = session.acpAgentInfoJson?.agentName;
 
+  let workItem: WorkItem | null = null;
+  let project: Project | null = null;
+  try {
+    workItem = await apiFetch<WorkItem>(
+      `/api/work-items/${session.workItemId}`,
+    ).catch(() => null);
+    if (workItem) {
+      project = await apiFetch<Project>(
+        `/api/projects/${workItem.projectId}`,
+      ).catch(() => null);
+    }
+  } catch {
+    // breadcrumb is optional; page works without it
+  }
+
   return (
     <div className="-mx-4 -my-6 flex h-[calc(100vh-4.5rem)] flex-col">
       <div className="shrink-0 border-b px-4 py-2">
+        <div className="mb-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+          <Link
+            href="/"
+            className="transition-colors hover:text-foreground"
+          >
+            Home
+          </Link>
+          {project ? (
+            <>
+              <ChevronRightIcon className="size-3" />
+              <Link
+                href={`/projects/${project.id}/board`}
+                className="transition-colors hover:text-foreground"
+              >
+                {project.name}
+              </Link>
+            </>
+          ) : null}
+          {workItem ? (
+            <>
+              <ChevronRightIcon className="size-3" />
+              <Link
+                href={`/projects/${workItem.projectId}/work-items/${workItem.id}`}
+                className="transition-colors hover:text-foreground"
+              >
+                {workItem.title}
+              </Link>
+            </>
+          ) : null}
+          <ChevronRightIcon className="size-3" />
+          <span className="font-medium text-foreground">Session</span>
+        </div>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
