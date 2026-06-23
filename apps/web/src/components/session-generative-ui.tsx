@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
@@ -55,9 +56,13 @@ export function SessionGenerativeUI({
   session: Session;
   initialEvents: SessionEvent[];
 }) {
+  const router = useRouter();
   const [showRaw, setShowRaw] = useState(false);
   const [input, setInput] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
+  const [liveStatus, setLiveStatus] = useState<Session["status"]>(
+    session.status,
+  );
   const transportRef = useRef(
     new DefaultChatTransport({
       api: `/api/sessions/${session.id}/ui-stream`,
@@ -74,10 +79,59 @@ export function SessionGenerativeUI({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id]);
 
+  // Keep the page state in sync with the server as new events arrive.
+  const lastSeq = initialEvents.at(-1)?.seq ?? 0;
+  const hasRefreshedRef = useRef(false);
+  useEffect(() => {
+    const es = new EventSource(
+      `/api/sessions/${session.id}/events/stream?afterSeq=${lastSeq}`,
+      { withCredentials: true },
+    );
+    const handleMessage = (e: MessageEvent) => {
+      try {
+        const event = JSON.parse(e.data) as SessionEvent;
+        const statusMap: Record<string, Session["status"] | undefined> = {
+          "runner.dispatched": "dispatching",
+          "runner.accepted": "running",
+          "session.started": "running",
+          "session.completed": "completed",
+          "session.failed": "failed",
+          "session.interrupted": "interrupted",
+          "session.cancelled": "cancelled",
+          "acp.awaiting_input": "awaiting_input",
+        };
+        const next = statusMap[event.type];
+        if (next) {
+          setLiveStatus((prev) => {
+            if (
+              !hasRefreshedRef.current &&
+              prev !== next &&
+              (next === "completed" ||
+                next === "failed" ||
+                next === "interrupted" ||
+                next === "cancelled")
+            ) {
+              hasRefreshedRef.current = true;
+              router.refresh();
+            }
+            return next;
+          });
+        }
+      } catch {
+        // ignore malformed events
+      }
+    };
+    es.addEventListener("message", handleMessage);
+    return () => {
+      es.close();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.id]);
+
   const assistantMessages = messages.filter((m) => m.role === "assistant");
   const isStreaming = status === "streaming";
-  const isResumable = RESUMABLE_STATUSES.has(session.status);
-  const inputEnabled = !error && session.status !== "cancelled";
+  const isResumable = RESUMABLE_STATUSES.has(liveStatus);
+  const inputEnabled = !error && liveStatus !== "cancelled";
 
   async function handleSubmit(message: PromptInputMessage) {
     const text = message.text?.trim();
@@ -105,12 +159,17 @@ export function SessionGenerativeUI({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-1.5 flex shrink-0 items-center justify-between">
-        <div className="text-xs text-muted-foreground">
-          {isStreaming || status === "submitted"
-            ? "Streaming agent trace..."
-            : status === "error"
-              ? "Stream error"
-              : "Trace complete"}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="inline-flex items-center rounded-full border px-2 py-0.5 font-medium capitalize">
+            {liveStatus.replace("_", " ")}
+          </span>
+          <span>
+            {isStreaming || status === "submitted"
+              ? "Streaming agent trace..."
+              : status === "error"
+                ? "Stream error"
+                : "Trace complete"}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           {(isStreaming || status === "submitted") && (
@@ -161,7 +220,7 @@ export function SessionGenerativeUI({
             <PromptInputTextarea
               value={input}
               placeholder={
-                session.status === "cancelled"
+                liveStatus === "cancelled"
                   ? "Session cancelled"
                   : isResumable
                     ? "Type to resume session..."
@@ -177,7 +236,7 @@ export function SessionGenerativeUI({
                 <span className="text-xs text-destructive">{inputError}</span>
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  {session.status === "cancelled"
+                  {liveStatus === "cancelled"
                     ? "Session cancelled"
                     : isResumable
                       ? "Press Enter to resume the session"
