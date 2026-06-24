@@ -7,12 +7,16 @@ import {
   resolvePullRequestForSession,
 } from "@taskforge/pi-agent";
 import { PrismaService } from "../common/prisma.service";
+import { RedisService } from "../common/redis.service";
 import { renderPrompt } from "../common/prompt.util";
 
 @Injectable()
 export class OutboxService {
+  private readonly CLAIM_AVAILABLE_KEY = "runner:claims:available";
+
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
     @Optional()
     @InjectQueue("outbox")
     private readonly outboxQueue: Queue | undefined,
@@ -108,6 +112,8 @@ export class OutboxService {
         acpAgentInfoJson: acpAgentInfoJson as Prisma.InputJsonValue,
       },
     });
+
+    await this.redis.getClient().set(this.CLAIM_AVAILABLE_KEY, "1");
 
     if (this.runnerQueue) {
       await this.runnerQueue.add("dispatch", { sessionId });

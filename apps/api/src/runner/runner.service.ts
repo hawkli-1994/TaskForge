@@ -50,6 +50,7 @@ const EVENT_TO_SESSION_STATUS: Partial<Record<EventType, SessionStatus>> = {
 export class RunnerService {
   private readonly REG_TOKEN_PREFIX = "runner:register:";
   private readonly REG_TOKEN_TTL_SECONDS = 15 * 60;
+  private readonly CLAIM_AVAILABLE_KEY = "runner:claims:available";
 
   constructor(
     private readonly prisma: PrismaService,
@@ -287,6 +288,11 @@ export class RunnerService {
       return null;
     }
 
+    const available = await this.redis.getClient().get(this.CLAIM_AVAILABLE_KEY);
+    if (available !== "1") {
+      return null;
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const session = await tx.agentSession.findFirst({
         where: {
@@ -297,6 +303,7 @@ export class RunnerService {
         include: { workItem: true, contextBundle: true },
       });
       if (!session) {
+        await this.redis.getClient().set(this.CLAIM_AVAILABLE_KEY, "0");
         return null;
       }
 
@@ -339,6 +346,16 @@ export class RunnerService {
           session.workItem,
           session.contextBundle,
         );
+      }
+
+      const remaining = await tx.agentSession.count({
+        where: {
+          status: { in: ["dispatching", "queued"] },
+          OR: [{ runnerId }, { runnerId: null }],
+        },
+      });
+      if (remaining === 0) {
+        await this.redis.getClient().set(this.CLAIM_AVAILABLE_KEY, "0");
       }
 
       const acp = {

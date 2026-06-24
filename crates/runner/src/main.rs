@@ -13,8 +13,8 @@ use tokio::sync::{Mutex, mpsc};
 use tokio::time::interval;
 use tracing::{debug, error, info, warn};
 
-const HEARTBEAT_INTERVAL_SECS: u64 = 5;
-const CLAIM_INTERVAL_SECS: u64 = 15;
+const HEARTBEAT_INTERVAL_SECS: u64 = 1;
+const CLAIM_INTERVAL_SECS: u64 = 2;
 const CAPABILITIES: &[&str] = &["execute", "patch", "verify", "stub-agent"];
 
 #[derive(Parser, Debug)]
