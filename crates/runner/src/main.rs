@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use std::process::Command as StdCommand;
 use std::sync::Arc;
 use std::time::Duration;
 use taskforge_runner_core::{
@@ -57,6 +56,8 @@ enum Commands {
         token: String,
         #[arg(long)]
         name: Option<String>,
+        #[arg(long)]
+        platform_url: Option<String>,
     },
 
     /// Start the runner loop.
@@ -91,7 +92,11 @@ async fn main() -> Result<()> {
             repository_id,
             local_path,
         } => bind_repo(repository_id, local_path).await,
-        Commands::Up { token, name } => up(token, name).await,
+        Commands::Up {
+            token,
+            name,
+            platform_url,
+        } => up(token, name, platform_url).await,
         Commands::Start => start().await,
         Commands::Status => status().await,
         Commands::Doctor => doctor().await,
@@ -159,11 +164,23 @@ async fn register(name: String, project_id: String, adapter: String) -> Result<(
     Ok(())
 }
 
-async fn up(reg_token: String, name: Option<String>) -> Result<()> {
+async fn up(
+    reg_token: String,
+    name: Option<String>,
+    platform_url: Option<String>,
+) -> Result<()> {
     let config = RunnerConfig::load()?;
-    let client = client_for(&config);
+    let platform_url = platform_url
+        .or_else(|| std::env::var("TASKFORGE_API_URL").ok())
+        .or_else(|| Some(config.api_url.clone()));
+    let platform_url_str = platform_url
+        .as_deref()
+        .unwrap_or("http://localhost:3001/api");
+    let client = PlatformClient::new(platform_url_str, config.token.clone());
     let name = name.unwrap_or_else(|| default_runner_name());
-    let reg: RunnerRegistration = client.up(&reg_token, &name, "local").await?;
+    let reg: RunnerRegistration = client
+        .up(&reg_token, &name, "local", Some(platform_url_str))
+        .await?;
 
     let auth = AuthStore::from_config_dir()?;
     auth.save(Some(&reg.token), Some(&reg.runner_id))?;
@@ -171,9 +188,15 @@ async fn up(reg_token: String, name: Option<String>) -> Result<()> {
     let mut updated = config.clone();
     updated.token = Some(reg.token);
     updated.runner_id = Some(reg.runner_id);
+    updated.api_url = reg
+        .platform_url
+        .unwrap_or_else(|| platform_url_str.to_string());
     updated.save()?;
 
-    info!("runner {} is up, starting loop", updated.runner_id.as_deref().unwrap_or(""));
+    info!(
+        "runner {} is up, starting loop",
+        updated.runner_id.as_deref().unwrap_or("")
+    );
     start_with_config(updated).await
 }
 

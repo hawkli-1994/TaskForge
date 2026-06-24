@@ -9,12 +9,16 @@ use tracing::{debug, info};
 pub struct RunnerRegistration {
     pub runner_id: String,
     pub token: String,
+    #[serde(default, rename = "platformUrl")]
+    pub platform_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RegisterApiResponse {
     pub runner_id: String,
     pub token: String,
+    #[serde(default, rename = "platformUrl")]
+    pub platform_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,6 +26,8 @@ struct UpRequest {
     pub token: String,
     pub name: String,
     pub adapter: String,
+    #[serde(rename = "platformUrl")]
+    pub platform_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -176,12 +182,14 @@ impl PlatformClient {
         token: &str,
         name: &str,
         adapter: &str,
+        platform_url: Option<&str>,
     ) -> Result<RunnerRegistration, RunnerError> {
         let url = format!("{}/runner/up", self.base_url);
         let body = UpRequest {
             token: token.to_string(),
             name: name.to_string(),
             adapter: adapter.to_string(),
+            platform_url: platform_url.map(|s| s.to_string()),
         };
         debug!("POST {}", url);
         let mut headers = reqwest::header::HeaderMap::new();

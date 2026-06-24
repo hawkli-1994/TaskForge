@@ -104,7 +104,7 @@ export class RunnerService {
       .getClient()
       .del(`${this.REG_TOKEN_PREFIX}${input.token}`);
 
-    return result;
+    return { ...result, platformUrl: input.platformUrl };
   }
 
   private async createRunnerProfile(

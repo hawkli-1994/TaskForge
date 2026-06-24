@@ -203,6 +203,7 @@ export const RunnerUpInput = z.object({
   token: z.string().min(1),
   name: z.string().min(1).max(200),
   adapter: z.string().max(100).optional(),
+  platformUrl: z.string().url().max(1000).optional(),
 });
 export type RunnerUpInput = z.infer<typeof RunnerUpInput>;
 

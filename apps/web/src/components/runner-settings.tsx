@@ -58,8 +58,12 @@ export function RunnerSettings({ projectId }: { projectId: string }) {
     }
   }
 
+  const platformUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/api`
+    : "http://localhost:3001/api";
+
   const command = token
-    ? `taskforge-runner up --token ${token}${name ? ` --name ${name}` : ""}`
+    ? `taskforge-runner up --token ${token} --platform-url ${platformUrl}${name ? ` --name ${name}` : ""}`
     : null;
 
   return (
