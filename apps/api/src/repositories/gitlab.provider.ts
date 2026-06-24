@@ -1,11 +1,10 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from "@nestjs/common";
 import { RepositoryProviderInput } from "@taskforge/contracts";
 import { RepositoryProvider } from "./provider.port";
-
-export interface GitLabConfig {
-  token: string;
-  baseUrl: string;
-}
 
 interface GitLabProject {
   id: number;
@@ -16,16 +15,18 @@ interface GitLabProject {
 
 @Injectable()
 export class GitLabRepositoryProvider implements RepositoryProvider {
-  constructor(private readonly config: GitLabConfig) {}
-
   async fetchMetadata(input: RepositoryProviderInput) {
+    if (!input.accessToken) {
+      throw new BadRequestException("GitLab access token is required");
+    }
+
     const projectPath = this.extractProjectPath(input.url);
     const apiBase = this.resolveApiBase(input.url);
     const encodedPath = encodeURIComponent(projectPath);
 
     const response = await fetch(`${apiBase}/projects/${encodedPath}`, {
       headers: {
-        "PRIVATE-TOKEN": this.config.token,
+        "PRIVATE-TOKEN": input.accessToken,
         Accept: "application/json",
       },
     });
@@ -42,19 +43,6 @@ export class GitLabRepositoryProvider implements RepositoryProvider {
       defaultBranch: project.default_branch,
       externalId: String(project.id),
     };
-  }
-
-  async validateConnection() {
-    const response = await fetch(`${this.config.baseUrl}/api/v4/user`, {
-      headers: { "PRIVATE-TOKEN": this.config.token },
-    });
-    if (!response.ok) {
-      const body = await response.text();
-      throw new InternalServerErrorException(
-        `GitLab connection failed: ${response.status} ${response.statusText} - ${body}`,
-      );
-    }
-    return response.json();
   }
 
   private extractProjectPath(url: string): string {

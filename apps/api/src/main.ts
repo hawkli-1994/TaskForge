@@ -6,7 +6,10 @@ import { ZodValidationPipe } from "./common/zod.pipe";
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.enableCors({ origin: "http://localhost:3000", credentials: true });
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN ?? "http://localhost:3000",
+    credentials: true,
+  });
   app.use(cookieParser(process.env.COOKIE_SECRET ?? "dev-cookie-secret"));
   app.setGlobalPrefix("api");
   app.useGlobalPipes(new ZodValidationPipe());

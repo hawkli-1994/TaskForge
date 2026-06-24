@@ -41,7 +41,7 @@ export class AuthController {
   private setTokenCookie(res: Response, token: string) {
     res.cookie(ACCESS_TOKEN_COOKIE, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.COOKIE_SECURE === "true",
       sameSite: "lax",
       maxAge: ONE_WEEK_MS,
       path: "/",

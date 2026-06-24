@@ -49,7 +49,7 @@ services:
     image: ghcr.io/hawkli-1994/taskforge-api:latest
     container_name: taskforge-api
     ports:
-      - "3001:3001"
+      - "${API_PORT:-3001}:3001"
     environment:
       NODE_ENV: production
       PORT: "3001"
@@ -57,6 +57,8 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       COOKIE_SECRET: ${COOKIE_SECRET:-change-me-in-production}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
       TASKFORGE_DEV_AUTH: ${TASKFORGE_DEV_AUTH:-false}
       GITLAB_API_TOKEN: ${GITLAB_API_TOKEN:-}
       GITLAB_BASE_URL: ${GITLAB_BASE_URL:-}
@@ -79,7 +81,7 @@ services:
     image: ghcr.io/hawkli-1994/taskforge-web:latest
     container_name: taskforge-web
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
     environment:
       TASKFORGE_API_URL: ${TASKFORGE_API_URL:-http://api:3001}
     depends_on:
